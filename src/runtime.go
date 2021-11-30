@@ -2,6 +2,7 @@ package lang
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 )
 
@@ -19,4 +20,17 @@ func nativeNum(arg Value) Value {
 		panic(err)
 	}
 	return Value{Tag: ValNum, Num: &i}
+}
+
+func nativeRead(arg Value) Value {
+	if arg.Tag != ValStr {
+		return Nil
+	}
+
+	f, err := os.ReadFile(*arg.Str)
+	if err != nil {
+		panic(err)
+	}
+	s := string(f)
+	return Value{Tag: ValStr, Str: &s}
 }

@@ -2,7 +2,6 @@ package lang
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -87,6 +86,7 @@ func newEvaluator() Evaluator {
 
 	ev.setEnv("print", Value{Tag: ValNativeFn, NativeFn: nativePrint})
 	ev.setEnv("num", Value{Tag: ValNativeFn, NativeFn: nativeNum})
+	ev.setEnv("read", Value{Tag: ValNativeFn, NativeFn: nativeRead})
 	return ev
 }
 
@@ -133,25 +133,19 @@ func (ev *Evaluator) find(name string) (*Value, bool) {
 }
 
 func (ev *Evaluator) readInputFile() {
-	fileName := ev.evalSection("file")
-	if fileName.Tag != ValStr {
-		panic("file section must be a string")
+	f := ev.evalSection("file")
+	if f.Tag != ValStr {
+		panic("file section must evaluate to a string")
 	}
 
-	f, err := os.ReadFile(*fileName.Str)
-	if err != nil {
-		panic(err)
-	}
-
-	file := string(f)
 	mapOfLines := make(map[string]Value)
 
-	for index, line := range strings.Split(file, "\n") {
+	for index, line := range strings.Split(*f.Str, "\n") {
 		l := line
 		mapOfLines[strconv.Itoa(index)] = Value{Tag: ValStr, Str: &l}
 	}
 
-	ev.setEnv("input", Value{Tag: ValStr, Str: &file})
+	ev.setEnv("input", Value{Tag: ValStr, Str: f.Str})
 	ev.setEnv("lines", Value{Tag: ValObj, Obj: &mapOfLines})
 }
 
