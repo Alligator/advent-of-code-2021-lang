@@ -120,16 +120,16 @@ func (ev *Evaluator) updateEnv(name string, val Value) {
 	}
 }
 
-func (ev *Evaluator) find(name string) *Value {
+func (ev *Evaluator) find(name string) (*Value, bool) {
 	env := ev.env
 	for env != nil {
 		val, present := env.vars[name]
 		if present {
-			return &val
+			return &val, true
 		}
 		env = env.parent
 	}
-	return &Nil
+	return &Nil, false
 }
 
 func (ev *Evaluator) readInputFile() {
@@ -221,7 +221,10 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 	case *ExprNum:
 		return Value{Tag: ValNum, Num: &node.num}
 	case *ExprIdentifier:
-		v := ev.find(node.identifier)
+		v, ok := ev.find(node.identifier)
+		if !ok {
+			panic(fmt.Sprintf("unknown variable %s", node.identifier))
+		}
 		return *v
 	case *ExprFuncall:
 		fnVal := ev.evalExpr(&node.identifier)
