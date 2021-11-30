@@ -71,6 +71,15 @@ type StmtFor struct {
 	body       []Stmt
 }
 
+type StmtIf struct {
+	condition Expr
+	body      []Stmt
+}
+
+type StmtReturn struct {
+	value Expr
+}
+
 // impelement type guards
 func (*SectionExpr) sectionNode()  {}
 func (*SectionBlock) sectionNode() {}
@@ -81,9 +90,11 @@ func (*ExprNum) exprNode()        {}
 func (*ExprFuncall) exprNode()    {}
 func (*ExprBinary) exprNode()     {}
 
-func (*StmtExpr) stmtNode() {}
-func (*StmtVar) stmtNode()  {}
-func (*StmtFor) stmtNode()  {}
+func (*StmtExpr) stmtNode()   {}
+func (*StmtVar) stmtNode()    {}
+func (*StmtFor) stmtNode()    {}
+func (*StmtIf) stmtNode()     {}
+func (*StmtReturn) stmtNode() {}
 
 type AstPrinter struct {
 	depth uint8
@@ -149,6 +160,12 @@ func (ap *AstPrinter) printStmt(stmt *Stmt) {
 	case *StmtExpr:
 		ap.printIndented("StmtExpr")
 		ap.printExpr(&node.expr)
+	case *StmtIf:
+		ap.printIndented("StmtIf")
+		ap.printExpr(&node.condition)
+		for _, stmt := range node.body {
+			ap.printStmt(&stmt)
+		}
 	default:
 		ap.printIndented("UNKNOWN", fmt.Sprintf("%#v", node))
 	}

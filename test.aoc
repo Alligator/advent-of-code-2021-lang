@@ -1,18 +1,25 @@
 file: 'input.txt'
 
 part1: {
-  print(input)
-  print(lines)
-
-  var sum = 0
-  for line in lines {
-    sum = sum + num(line)
+  for line1 in lines {
+    for line2 in lines {
+      var sum = num(line1) + num(line2)
+      if sum == 2020 {
+        return num(line1) * num(line2)
+      }
+    }
   }
-
-  print(sum)
-  print('do stuff here')
 }
 
 part2: {
-  print('do other stuff here')
+  for line1 in lines {
+    for line2 in lines {
+      for line3 in lines {
+        var sum = num(line1) + num(line2) + num(line3)
+        if sum == 2020 {
+          return num(line1) * num(line2) * num(line3)
+        }
+      }
+    }
+  }
 }

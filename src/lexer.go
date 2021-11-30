@@ -20,13 +20,20 @@ const (
 	RParen
 	Var
 	Equal
+	EqualEqual
 	For
 	In
 	Plus
+	If
+	Star
+	Return
 )
 
 func (t TokenTag) String() string {
-	return []string{"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var", "Equal", "For", "In", "Plus"}[t]
+	return []string{
+		"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var",
+		"Equal", "EqualEqual", "For", "In", "Plus", "If", "Star", "Return",
+	}[t]
 }
 
 type Token struct {
@@ -113,6 +120,10 @@ func (lex *Lexer) identifier() Token {
 		return simpleToken(lex, For)
 	case "in":
 		return simpleToken(lex, In)
+	case "if":
+		return simpleToken(lex, If)
+	case "return":
+		return simpleToken(lex, Return)
 	default:
 		return stringToken(lex, Identifier, start)
 	}
@@ -167,10 +178,16 @@ func (lex *Lexer) NextToken() Token {
 		return simpleToken(lex, LParen)
 	case ')':
 		return simpleToken(lex, RParen)
-	case '=':
-		return simpleToken(lex, Equal)
+	case '*':
+		return simpleToken(lex, Star)
 	case '+':
 		return simpleToken(lex, Plus)
+	case '=':
+		if lex.peek() == '=' {
+			lex.advance()
+			return simpleToken(lex, EqualEqual)
+		}
+		return simpleToken(lex, Equal)
 	}
 	panic(lex.fmtError(fmt.Sprintf("unexpected character %q", r)))
 }

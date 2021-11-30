@@ -51,6 +51,22 @@ func (v Value) String() string {
 	}
 }
 
+func (v Value) isTruthy() bool {
+	switch v.Tag {
+	case ValNum:
+		return *v.Num != 0
+	}
+	return false
+}
+
+func compare(a Value, b Value) (bool, error) {
+	switch {
+	case a.Tag == ValNum && b.Tag == ValNum:
+		return *a.Num == *b.Num, nil
+	}
+	return false, fmt.Errorf("cannot compare %v and %v", a.Tag, b.Tag)
+}
+
 type Env struct {
 	parent *Env
 	vars   map[string]Value
@@ -59,6 +75,7 @@ type Env struct {
 type Evaluator struct {
 	sections map[string]Section
 	env      *Env
+	section  *Section
 }
 
 func newEvaluator() Evaluator {
@@ -152,19 +169,49 @@ func (ev *Evaluator) evalProgram(prog *Program) {
 }
 
 func (ev *Evaluator) evalSection(name string) Value {
+	defer ev.handleSectionReturn()
+
+	if ev.section != nil {
+		panic("cannot nest sections")
+	}
+
 	section := ev.sections[name]
 	switch node := section.(type) {
 	case *SectionBlock:
-		ev.pushEnv()
-		for _, stmt := range node.block {
-			ev.evalStmt(&stmt)
-		}
-		ev.popEnv()
+		ev.section = &section
+		ev.evalBlock(node.block)
+		ev.section = nil
 	case *SectionExpr:
 		return ev.evalExpr(&node.expression)
 	}
 
 	return Nil
+}
+
+func (ev *Evaluator) handleSectionReturn() {
+	if r := recover(); r != nil {
+		switch e := r.(type) {
+		case Value:
+			// unwind the stack
+			env := ev.env
+			for env.parent != nil {
+				env = env.parent
+			}
+			ev.env = env
+			fmt.Printf("%s returned %s\n", (*ev.section).getName(), e.String())
+			ev.section = nil
+		default:
+			panic(r)
+		}
+	}
+}
+
+func (ev *Evaluator) evalBlock(block []Stmt) {
+	ev.pushEnv()
+	for _, stmt := range block {
+		ev.evalStmt(&stmt)
+	}
+	ev.popEnv()
 }
 
 func (ev *Evaluator) evalExpr(expr *Expr) Value {
@@ -203,13 +250,32 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 			}
 			result := *lhs.Num + *rhs.Num
 			return Value{Tag: ValNum, Num: &result}
+		case Star:
+			lhs := ev.evalExpr(&node.lhs)
+			rhs := ev.evalExpr(&node.rhs)
+			if lhs.Tag != ValNum || rhs.Tag != ValNum {
+				panic("* is only supported for numbers")
+			}
+			result := *lhs.Num * *rhs.Num
+			return Value{Tag: ValNum, Num: &result}
+		case EqualEqual:
+			lhs := ev.evalExpr(&node.lhs)
+			rhs := ev.evalExpr(&node.rhs)
+			result, err := compare(lhs, rhs)
+			if err != nil {
+				panic(err)
+			}
+			num := 0
+			if result {
+				num = 1
+			}
+			return Value{Tag: ValNum, Num: &num}
 		default:
 			panic(fmt.Sprintf("unknown operator %s\n", node.op))
 		}
 	default:
 		panic(fmt.Sprintf("unhandled expression type %#v\n", node))
 	}
-	// return Nil
 }
 
 func (ev *Evaluator) evalStmt(stmt *Stmt) {
@@ -227,13 +293,19 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 		ev.pushEnv()
 		for _, val := range *val.Obj {
 			ev.setEnv(ident, val)
-			for _, stmt := range node.body {
-				ev.evalStmt(&stmt)
-			}
+			ev.evalBlock(node.body)
 		}
 		ev.popEnv()
 	case *StmtExpr:
 		ev.evalExpr(&node.expr)
+	case *StmtIf:
+		val := ev.evalExpr(&node.condition)
+		if val.isTruthy() {
+			ev.evalBlock(node.body)
+		}
+	case *StmtReturn:
+		val := ev.evalExpr(&node.value)
+		panic(val) // control flow panic
 	default:
 		panic(fmt.Sprintf("unhandled statement type %#v\n", node))
 	}

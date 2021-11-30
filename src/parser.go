@@ -67,7 +67,12 @@ func (p *Parser) statement() Stmt {
 		return p.varDecl()
 	case For:
 		return p.forLoop()
-
+	case If:
+		return p.ifStmt()
+	case Return:
+		p.consume(Return)
+		expr := p.expression()
+		return &StmtReturn{expr}
 	default:
 		expr := p.expression()
 		return &StmtExpr{expr}
@@ -93,13 +98,18 @@ func (p *Parser) forLoop() Stmt {
 	return &StmtFor{ident, val, body}
 }
 
+func (p *Parser) ifStmt() Stmt {
+	p.consume(If)
+	condition := p.expression()
+	body := p.block()
+	return &StmtIf{condition, body}
+}
+
 func (p *Parser) expression() Expr {
 	lhs := p.unary()
 
 	switch p.token.Tag {
-	case Equal:
-		fallthrough
-	case Plus:
+	case Equal, EqualEqual, Star, Plus:
 		op := p.token.Tag
 		p.advance()
 		rhs := p.expression()
