@@ -71,16 +71,6 @@ func (p *Parser) statement() Stmt {
 	default:
 		expr := p.expression()
 		return &StmtExpr{expr}
-		// case Identifier:
-		// 	lhs := p.identifier()
-		// 	switch p.token.Tag {
-		// 	case LParen:
-		// 		return p.funcall()
-		// 	default:
-		// 		return p.statement()
-		// 	}
-		// default:
-		// 	panic(fmt.Sprintf("unexpected token %s\n", p.token.Tag.String()))
 	}
 }
 
@@ -103,16 +93,8 @@ func (p *Parser) forLoop() Stmt {
 	return &StmtFor{ident, val, body}
 }
 
-// func (p *Parser) funcall() Stmt {
-// 	ident := p.lex.GetString(p.prevToken)
-// 	p.consume(LParen)
-// 	expr := p.expression()
-// 	p.consume(RParen)
-// 	return &StmtFuncall{ident, expr}
-// }
-
 func (p *Parser) expression() Expr {
-	lhs := p.value()
+	lhs := p.unary()
 
 	switch p.token.Tag {
 	case Equal:
@@ -122,17 +104,24 @@ func (p *Parser) expression() Expr {
 		p.advance()
 		rhs := p.expression()
 		return &ExprBinary{lhs, rhs, op}
-	case LParen:
-		p.consume(LParen)
-		expr := p.expression()
-		p.consume(RParen)
-		return &ExprFuncall{lhs, expr}
 	default:
 		return lhs
 	}
 }
 
-func (p *Parser) value() Expr {
+func (p *Parser) unary() Expr {
+	lhs := p.primary()
+	switch p.token.Tag {
+	case LParen:
+		p.consume(LParen)
+		expr := p.expression()
+		p.consume(RParen)
+		return &ExprFuncall{lhs, expr}
+	}
+	return lhs
+}
+
+func (p *Parser) primary() Expr {
 	switch p.token.Tag {
 	case Str:
 		return p.string()
@@ -141,7 +130,7 @@ func (p *Parser) value() Expr {
 	case Identifier:
 		return p.identifier()
 	default:
-		panic(p.fmtError("expected a value"))
+		panic(p.fmtError(fmt.Sprintf("expected a value but found %s", p.token.Tag)))
 	}
 }
 
