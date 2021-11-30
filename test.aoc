@@ -1,0 +1,18 @@
+file: 'input.txt'
+
+part1: {
+  print(input)
+  print(lines)
+
+  var sum = 0
+  for line in lines {
+    sum = sum + num(line)
+  }
+
+  print(sum)
+  print('do stuff here')
+}
+
+part2: {
+  print('do other stuff here')
+}

@@ -1,0 +1,42 @@
+program
+  section
+  section section*
+
+section
+  identifier ':' expression
+  identifier ':' block
+
+identifier
+  letter
+  letter alpha*
+
+alpha
+  letter
+  digit
+
+expression
+  string
+  identifier
+
+block
+  '{' statement* '}'
+
+statement
+  funcall
+
+funcall
+  identifier '()'
+  identifier '(' args ')'
+
+args
+  expression
+  expression ',' args
+
+string
+  ''' anything '''
+
+letter
+  whatever IsLetter says
+
+digit
+  whatever IsDigit says
