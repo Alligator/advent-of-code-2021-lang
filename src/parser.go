@@ -20,6 +20,11 @@ func (p *Parser) atEnd() bool {
 	return p.token.Tag == EOF
 }
 
+func (p *Parser) fmtError(msg string) string {
+	line, col := p.lex.GetLineAndCol(p.token)
+	return fmt.Sprintf("parse error on line %d col %d: %s\n", line, col, msg)
+}
+
 func (p *Parser) advance() {
 	p.prevToken = p.token
 	p.token = p.lex.NextToken()
@@ -27,7 +32,7 @@ func (p *Parser) advance() {
 
 func (p *Parser) consume(expected TokenTag) {
 	if p.token.Tag != expected {
-		panic(fmt.Sprintf("syntax error: expected %s but saw %s", expected, p.token.Tag))
+		panic(p.fmtError(fmt.Sprintf("expected %s but saw %s", expected, p.token.Tag)))
 	}
 	p.advance()
 }
@@ -136,7 +141,7 @@ func (p *Parser) value() Expr {
 	case Identifier:
 		return p.identifier()
 	default:
-		panic("expected a value")
+		panic(p.fmtError("expected a value"))
 	}
 }
 
@@ -151,7 +156,7 @@ func (p *Parser) number() Expr {
 	s := p.lex.GetString(p.prevToken)
 	num, err := strconv.Atoi(s)
 	if err != nil {
-		panic(err)
+		panic(p.fmtError(err.Error()))
 	}
 	return &ExprNum{num}
 }

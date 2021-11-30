@@ -36,14 +36,16 @@ type Token struct {
 }
 
 type Lexer struct {
-	src string
-	pos int
+	src  string
+	pos  int
+	line int
 }
 
 func NewLexer(src string) Lexer {
 	return Lexer{
-		src: src,
-		pos: 0,
+		src:  src,
+		pos:  0,
+		line: 1,
 	}
 }
 
@@ -53,6 +55,10 @@ func simpleToken(lex *Lexer, tag TokenTag) Token {
 
 func stringToken(lex *Lexer, tag TokenTag, start int) Token {
 	return Token{tag, start, lex.pos - start}
+}
+
+func (lex *Lexer) fmtError(msg string) string {
+	return fmt.Sprintf("lex error on line %d: %s\n", lex.line, msg)
 }
 
 func (lex *Lexer) peek() rune {
@@ -68,7 +74,7 @@ func (lex *Lexer) advance() rune {
 func (lex *Lexer) consume(expected rune) rune {
 	r, size := utf8.DecodeRuneInString(lex.src[lex.pos:])
 	if r != expected {
-		panic(fmt.Sprintf("expected %q but saw %q", expected, r))
+		panic(lex.fmtError(fmt.Sprintf("expected %q but saw %q", expected, r)))
 	}
 	lex.pos += size
 	return r
@@ -78,10 +84,9 @@ func (lex *Lexer) skipWhitespace() {
 	for {
 		switch lex.peek() {
 		case ' ':
-			fallthrough
+			lex.advance()
 		case '\n':
-			fallthrough
-		case '\r':
+			lex.line++
 			lex.advance()
 		default:
 			return
@@ -167,9 +172,24 @@ func (lex *Lexer) NextToken() Token {
 	case '+':
 		return simpleToken(lex, Plus)
 	}
-	panic(fmt.Sprintf("unexpected character %q", r))
+	panic(lex.fmtError(fmt.Sprintf("unexpected character %q", r)))
 }
 
 func (lex *Lexer) GetString(token Token) string {
 	return lex.src[token.Pos : token.Pos+token.Len]
+}
+
+func (lex *Lexer) GetLineAndCol(token Token) (int, int) {
+	line := 1
+	lineStart := 0
+	for i, r := range lex.src {
+		if r == '\n' {
+			line++
+			lineStart = i + 1
+		}
+		if i > token.Pos {
+			break
+		}
+	}
+	return line, token.Pos - lineStart
 }
