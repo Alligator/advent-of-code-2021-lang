@@ -17,7 +17,7 @@ func nativeNum(arg Value) Value {
 	}
 	i, err := strconv.Atoi(*arg.Str)
 	if err != nil {
-		panic(err)
+		return Nil
 	}
 	return Value{Tag: ValNum, Num: &i}
 }

@@ -21,6 +21,7 @@ const (
 	Var
 	Equal
 	EqualEqual
+	Greater
 	GreaterEqual
 	For
 	In
@@ -34,7 +35,8 @@ const (
 func (t TokenTag) String() string {
 	return []string{
 		"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var",
-		"Equal", "EqualEqual", "GreaterEqual", "For", "In", "Plus", "If", "Star", "Return", "Continue",
+		"Equal", "EqualEqual", "Greater", "GreaterEqual", "For", "In", "Plus", "If", "Star", "Return",
+		"Continue",
 	}[t]
 }
 
@@ -194,6 +196,7 @@ func (lex *Lexer) NextToken() Token {
 			lex.advance()
 			return simpleToken(lex, GreaterEqual)
 		}
+		return simpleToken(lex, Greater)
 	case '=':
 		if lex.peek() == '=' {
 			lex.advance()

@@ -12,7 +12,7 @@ const (
 	ValNil ValueTag = iota
 	ValStr
 	ValNum
-	ValObj
+	ValArray
 	ValNativeFn
 )
 
@@ -20,7 +20,7 @@ type Value struct {
 	Tag      ValueTag
 	Str      *string
 	Num      *int
-	Obj      *map[string]Value
+	Array    *[]Value
 	NativeFn func(Value) Value
 }
 
@@ -34,16 +34,14 @@ func (v Value) String() string {
 		return "'" + *v.Str + "'"
 	case ValNum:
 		return strconv.Itoa(*v.Num)
-	case ValObj:
+	case ValArray:
 		var sb strings.Builder
-		sb.WriteString("{ ")
-		for key, val := range *v.Obj {
-			sb.WriteString(key)
-			sb.WriteString(": ")
+		sb.WriteString("[ ")
+		for _, val := range *v.Array {
 			sb.WriteString(val.String())
 			sb.WriteString(", ")
 		}
-		sb.WriteString("\b\b }")
+		sb.WriteString("\b\b ]")
 		return sb.String()
 	default:
 		return fmt.Sprintf("<unknown> %#v\n", v)
@@ -153,15 +151,15 @@ func (ev *Evaluator) find(name string) (*Value, bool) {
 }
 
 func (ev *Evaluator) ReadInput(input string) {
-	mapOfLines := make(map[string]Value)
+	lines := make([]Value, 0)
 
-	for index, line := range strings.Split(input, "\n") {
+	for _, line := range strings.Split(input, "\n") {
 		l := line
-		mapOfLines[strconv.Itoa(index)] = Value{Tag: ValStr, Str: &l}
+		lines = append(lines, Value{Tag: ValStr, Str: &l})
 	}
 
 	ev.setEnv("input", Value{Tag: ValStr, Str: &input})
-	ev.setEnv("lines", Value{Tag: ValObj, Obj: &mapOfLines})
+	ev.setEnv("lines", Value{Tag: ValArray, Array: &lines})
 }
 
 func (ev *Evaluator) evalProgram(prog *Program) {
@@ -212,6 +210,11 @@ func (ev *Evaluator) EvalSection(name string) (retVal Value) {
 	}
 
 	return retVal
+}
+
+func (ev *Evaluator) HasSection(name string) bool {
+	_, present := ev.sections[name]
+	return present
 }
 
 func (ev *Evaluator) handleSectionReturn() {
@@ -299,12 +302,18 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 				num = 1
 			}
 			return Value{Tag: ValNum, Num: &num}
-		case GreaterEqual:
+		case Greater, GreaterEqual:
 			lhs := ev.evalExpr(&node.lhs)
 			rhs := ev.evalExpr(&node.rhs)
 			switch {
 			case lhs.Tag == ValNum && rhs.Tag == ValNum:
-				result := *lhs.Num >= *rhs.Num
+				result := false
+				switch node.op {
+				case Greater:
+					result = *lhs.Num > *rhs.Num
+				case GreaterEqual:
+					result = *lhs.Num >= *rhs.Num
+				}
 				num := 0
 				if result {
 					num = 1
@@ -346,14 +355,12 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 }
 
 func (ev *Evaluator) forLoop(node *StmtFor) {
-	d := ev.env.depth()
-	d = d
 	val := ev.evalExpr(&node.value)
-	if val.Tag != ValObj {
-		panic("expected a obj in for loop")
+	if val.Tag != ValArray {
+		panic("expected an array in for loop")
 	}
 	ev.pushEnv()
-	for _, val := range *val.Obj {
+	for _, val := range *val.Array {
 		ev.runForLoopBody(node, val)
 	}
 	ev.popEnv()
