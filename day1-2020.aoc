@@ -1,5 +1,14 @@
 file: read('input.txt')
 
+test: '1721
+979
+366
+299
+675
+1456'
+test_part1: 514578
+test_part2: 241861950
+
 part1: {
   for line1 in lines {
     for line2 in lines {

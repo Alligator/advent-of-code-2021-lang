@@ -105,7 +105,7 @@ func (lex *Lexer) identifier() Token {
 	start := lex.pos
 	for {
 		c := lex.peek()
-		if unicode.IsLetter(c) || unicode.IsNumber(c) {
+		if unicode.IsLetter(c) || unicode.IsNumber(c) || c == '_' {
 			lex.advance()
 		} else {
 			break

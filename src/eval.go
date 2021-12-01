@@ -58,12 +58,18 @@ func (v Value) isTruthy() bool {
 	return false
 }
 
-func compare(a Value, b Value) (bool, error) {
-	switch {
-	case a.Tag == ValNum && b.Tag == ValNum:
-		return *a.Num == *b.Num, nil
+func (v Value) CheckTagOrPanic(expectedTag ValueTag) {
+	if v.Tag != expectedTag {
+		panic(fmt.Errorf("expected a %v but found a %v", expectedTag, v.Tag))
 	}
-	return false, fmt.Errorf("cannot compare %v and %v", a.Tag, b.Tag)
+}
+
+func (v Value) Compare(b Value) (bool, error) {
+	switch {
+	case v.Tag == ValNum && b.Tag == ValNum:
+		return *v.Num == *b.Num, nil
+	}
+	return false, fmt.Errorf("cannot compare %v and %v", v.Tag, b.Tag)
 }
 
 type Env struct {
@@ -77,7 +83,7 @@ type Evaluator struct {
 	section  *Section
 }
 
-func newEvaluator() Evaluator {
+func NewEvaluator(prog *Program) Evaluator {
 	env := Env{vars: make(map[string]Value)}
 	ev := Evaluator{
 		env:      &env,
@@ -87,6 +93,8 @@ func newEvaluator() Evaluator {
 	ev.setEnv("print", Value{Tag: ValNativeFn, NativeFn: nativePrint})
 	ev.setEnv("num", Value{Tag: ValNativeFn, NativeFn: nativeNum})
 	ev.setEnv("read", Value{Tag: ValNativeFn, NativeFn: nativeRead})
+
+	ev.evalProgram(prog)
 	return ev
 }
 
@@ -132,20 +140,15 @@ func (ev *Evaluator) find(name string) (*Value, bool) {
 	return &Nil, false
 }
 
-func (ev *Evaluator) readInputFile() {
-	f := ev.evalSection("file")
-	if f.Tag != ValStr {
-		panic("file section must evaluate to a string")
-	}
-
+func (ev *Evaluator) ReadInput(input string) {
 	mapOfLines := make(map[string]Value)
 
-	for index, line := range strings.Split(*f.Str, "\n") {
+	for index, line := range strings.Split(input, "\n") {
 		l := line
 		mapOfLines[strconv.Itoa(index)] = Value{Tag: ValStr, Str: &l}
 	}
 
-	ev.setEnv("input", Value{Tag: ValStr, Str: f.Str})
+	ev.setEnv("input", Value{Tag: ValStr, Str: &input})
 	ev.setEnv("lines", Value{Tag: ValObj, Obj: &mapOfLines})
 }
 
@@ -155,21 +158,38 @@ func (ev *Evaluator) evalProgram(prog *Program) {
 		name := section.getName()
 		ev.sections[name] = section
 	}
-
-	// read the file
-	ev.readInputFile()
-	ev.evalSection("part1")
-	ev.evalSection("part2")
 }
 
-func (ev *Evaluator) evalSection(name string) Value {
-	defer ev.handleSectionReturn()
+func (ev *Evaluator) EvalSection(name string) (retVal Value) {
+	retVal = Nil
+
+	defer func() {
+		if r := recover(); r != nil {
+			switch e := r.(type) {
+			case Value:
+				// unwind the stack
+				env := ev.env
+				for env.parent != nil {
+					env = env.parent
+				}
+				ev.env = env
+				ev.section = nil
+				retVal = e
+			default:
+				panic(r)
+			}
+		}
+	}()
+	// defer ev.handleSectionReturn()
 
 	if ev.section != nil {
 		panic("cannot nest sections")
 	}
 
-	section := ev.sections[name]
+	section, preset := ev.sections[name]
+	if !preset {
+		panic(fmt.Errorf("couldn't find section %s", name))
+	}
 	switch node := section.(type) {
 	case *SectionBlock:
 		ev.section = &section
@@ -179,7 +199,7 @@ func (ev *Evaluator) evalSection(name string) Value {
 		return ev.evalExpr(&node.expression)
 	}
 
-	return Nil
+	return retVal
 }
 
 func (ev *Evaluator) handleSectionReturn() {
@@ -258,7 +278,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 		case EqualEqual:
 			lhs := ev.evalExpr(&node.lhs)
 			rhs := ev.evalExpr(&node.rhs)
-			result, err := compare(lhs, rhs)
+			result, err := lhs.Compare(rhs)
 			if err != nil {
 				panic(err)
 			}
@@ -308,7 +328,7 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 	}
 }
 
-func Eval(prog *Program) {
-	ev := newEvaluator()
-	ev.evalProgram(prog)
-}
+// func Eval(prog *Program, testMode bool) {
+// 	ev := newEvaluator(testMode)
+// 	ev.evalProgram(prog)
+// }
