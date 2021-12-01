@@ -66,7 +66,9 @@ func test(ev *lang.Evaluator) {
 	testInput.CheckTagOrPanic(lang.ValStr)
 	ev.ReadInput(*testInput.Str)
 	testSection(ev, "test_part1", "part1")
-	testSection(ev, "test_part2", "part2")
+	if ev.HasSection("part2") {
+		testSection(ev, "test_part2", "part2")
+	}
 }
 
 func testSection(ev *lang.Evaluator, expectedSection string, actualSection string) {
@@ -92,7 +94,9 @@ func run(ev *lang.Evaluator) {
 	}
 	ev.ReadInput(*f.Str)
 	fmt.Printf("part1: %s\n", evalSection(ev, "part1").String())
-	fmt.Printf("part2: %s\n", evalSection(ev, "part2").String())
+	if ev.HasSection("part2") {
+		fmt.Printf("part2: %s\n", evalSection(ev, "part2").String())
+}
 }
 
 func evalSection(ev *lang.Evaluator, name string) lang.Value {
