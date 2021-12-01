@@ -98,7 +98,7 @@ func (lex *Lexer) consume(expected rune) rune {
 func (lex *Lexer) skipWhitespace() {
 	for {
 		switch lex.peek() {
-		case ' ', '\n':
+		case ' ', '\n', '\r':
 			lex.advance()
 		default:
 			return
