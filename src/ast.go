@@ -80,6 +80,8 @@ type StmtReturn struct {
 	value Expr
 }
 
+type StmtContinue struct{}
+
 // impelement type guards
 func (*SectionExpr) sectionNode()  {}
 func (*SectionBlock) sectionNode() {}
@@ -90,11 +92,12 @@ func (*ExprNum) exprNode()        {}
 func (*ExprFuncall) exprNode()    {}
 func (*ExprBinary) exprNode()     {}
 
-func (*StmtExpr) stmtNode()   {}
-func (*StmtVar) stmtNode()    {}
-func (*StmtFor) stmtNode()    {}
-func (*StmtIf) stmtNode()     {}
-func (*StmtReturn) stmtNode() {}
+func (*StmtExpr) stmtNode()     {}
+func (*StmtVar) stmtNode()      {}
+func (*StmtFor) stmtNode()      {}
+func (*StmtIf) stmtNode()       {}
+func (*StmtReturn) stmtNode()   {}
+func (*StmtContinue) stmtNode() {}
 
 type AstPrinter struct {
 	depth uint8

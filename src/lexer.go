@@ -21,18 +21,20 @@ const (
 	Var
 	Equal
 	EqualEqual
+	GreaterEqual
 	For
 	In
 	Plus
 	If
 	Star
 	Return
+	Continue
 )
 
 func (t TokenTag) String() string {
 	return []string{
 		"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var",
-		"Equal", "EqualEqual", "For", "In", "Plus", "If", "Star", "Return",
+		"Equal", "EqualEqual", "GreaterEqual", "For", "In", "Plus", "If", "Star", "Return", "Continue",
 	}[t]
 }
 
@@ -74,6 +76,12 @@ func (lex *Lexer) peek() rune {
 }
 
 func (lex *Lexer) advance() rune {
+	if lex.pos > 0 {
+		prev, _ := utf8.DecodeRuneInString(lex.src[lex.pos-1:])
+		if prev == '\n' {
+			lex.line++
+		}
+	}
 	r, size := utf8.DecodeRuneInString(lex.src[lex.pos:])
 	lex.pos += size
 	return r
@@ -90,10 +98,7 @@ func (lex *Lexer) consume(expected rune) rune {
 func (lex *Lexer) skipWhitespace() {
 	for {
 		switch lex.peek() {
-		case ' ':
-			lex.advance()
-		case '\n':
-			lex.line++
+		case ' ', '\n':
 			lex.advance()
 		default:
 			return
@@ -124,6 +129,8 @@ func (lex *Lexer) identifier() Token {
 		return simpleToken(lex, If)
 	case "return":
 		return simpleToken(lex, Return)
+	case "continue":
+		return simpleToken(lex, Continue)
 	default:
 		return stringToken(lex, Identifier, start)
 	}
@@ -182,6 +189,11 @@ func (lex *Lexer) NextToken() Token {
 		return simpleToken(lex, Star)
 	case '+':
 		return simpleToken(lex, Plus)
+	case '>':
+		if lex.peek() == '=' {
+			lex.advance()
+			return simpleToken(lex, GreaterEqual)
+		}
 	case '=':
 		if lex.peek() == '=' {
 			lex.advance()

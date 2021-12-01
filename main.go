@@ -78,7 +78,7 @@ func testSection(ev *lang.Evaluator, expectedSection string, actualSection strin
 	}
 
 	if res {
-		fmt.Printf("\x1b[92m✓\x1b[0m %s", actualSection)
+		fmt.Printf("\x1b[92m✓\x1b[0m %s\n", actualSection)
 	} else {
 		fmt.Printf("\x1b[91m✗\x1b[0m %s\n  expected %s\n       got %s\n", actualSection, expected.String(), actual.String())
 	}

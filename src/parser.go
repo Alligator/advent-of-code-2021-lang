@@ -73,6 +73,9 @@ func (p *Parser) statement() Stmt {
 		p.consume(Return)
 		expr := p.expression()
 		return &StmtReturn{expr}
+	case Continue:
+		p.consume(Continue)
+		return &StmtContinue{}
 	default:
 		expr := p.expression()
 		return &StmtExpr{expr}
@@ -109,7 +112,7 @@ func (p *Parser) expression() Expr {
 	lhs := p.unary()
 
 	switch p.token.Tag {
-	case Equal, EqualEqual, Star, Plus:
+	case Equal, EqualEqual, Star, Plus, GreaterEqual:
 		op := p.token.Tag
 		p.advance()
 		rhs := p.expression()

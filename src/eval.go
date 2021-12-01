@@ -77,6 +77,18 @@ type Env struct {
 	vars   map[string]Value
 }
 
+func (env *Env) depth() int {
+	depth := 0
+	cenv := env
+	for cenv != nil {
+		if cenv.parent != nil {
+			depth++
+		}
+		cenv = cenv.parent
+	}
+	return depth
+}
+
 type Evaluator struct {
 	sections map[string]Section
 	env      *Env
@@ -287,6 +299,19 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 				num = 1
 			}
 			return Value{Tag: ValNum, Num: &num}
+		case GreaterEqual:
+			lhs := ev.evalExpr(&node.lhs)
+			rhs := ev.evalExpr(&node.rhs)
+			switch {
+			case lhs.Tag == ValNum && rhs.Tag == ValNum:
+				result := *lhs.Num >= *rhs.Num
+				num := 0
+				if result {
+					num = 1
+				}
+				return Value{Tag: ValNum, Num: &num}
+			}
+			panic(fmt.Errorf("cannot compare %v and %v", lhs.Tag, rhs.Tag))
 		default:
 			panic(fmt.Sprintf("unknown operator %s\n", node.op))
 		}
@@ -302,17 +327,7 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 		val := ev.evalExpr(&node.value)
 		ev.setEnv(ident, val)
 	case *StmtFor:
-		ident := node.identifier
-		val := ev.evalExpr(&node.value)
-		if val.Tag != ValObj {
-			panic("expected a obj in for loop")
-		}
-		ev.pushEnv()
-		for _, val := range *val.Obj {
-			ev.setEnv(ident, val)
-			ev.evalBlock(node.body)
-		}
-		ev.popEnv()
+		ev.forLoop(node)
 	case *StmtExpr:
 		ev.evalExpr(&node.expr)
 	case *StmtIf:
@@ -323,12 +338,44 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 	case *StmtReturn:
 		val := ev.evalExpr(&node.value)
 		panic(val) // control flow panic
+	case *StmtContinue:
+		panic(*node) // control flow panic
 	default:
 		panic(fmt.Sprintf("unhandled statement type %#v\n", node))
 	}
 }
 
-// func Eval(prog *Program, testMode bool) {
-// 	ev := newEvaluator(testMode)
-// 	ev.evalProgram(prog)
-// }
+func (ev *Evaluator) forLoop(node *StmtFor) {
+	d := ev.env.depth()
+	d = d
+	val := ev.evalExpr(&node.value)
+	if val.Tag != ValObj {
+		panic("expected a obj in for loop")
+	}
+	ev.pushEnv()
+	for _, val := range *val.Obj {
+		ev.runForLoopBody(node, val)
+	}
+	ev.popEnv()
+}
+
+func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value) {
+	// run the body of a for loop, handling continue statements
+	defer catchContinue(ev, ev.env)
+	ev.setEnv(node.identifier, val)
+	for _, stmt := range node.body {
+		ev.evalStmt(&stmt)
+	}
+}
+
+func catchContinue(ev *Evaluator, rootEnv *Env) {
+	if r := recover(); r != nil {
+		switch r.(type) {
+		case StmtContinue:
+			ev.env = rootEnv
+			return
+		default:
+			panic(r)
+		}
+	}
+}

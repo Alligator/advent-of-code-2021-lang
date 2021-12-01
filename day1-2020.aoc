@@ -6,12 +6,16 @@ test: '1721
 299
 675
 1456'
-test_part1: 514578
+test_part1: 514579
 test_part2: 241861950
 
 part1: {
   for line1 in lines {
     for line2 in lines {
+      if num(line1) == num(line2) {
+        continue
+      }
+      
       var sum = num(line1) + num(line2)
       if sum == 2020 {
         return num(line1) * num(line2)
@@ -23,6 +27,11 @@ part1: {
 part2: {
   for line1 in lines {
     for line2 in lines {
+      var sum = num(line1) + num(line2)
+      if sum >= 2020 {
+        continue
+      }
+
       for line3 in lines {
         var sum = num(line1) + num(line2) + num(line3)
         if sum == 2020 {
