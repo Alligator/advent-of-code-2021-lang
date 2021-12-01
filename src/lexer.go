@@ -201,7 +201,7 @@ func (lex *Lexer) NextToken() Token {
 		}
 		return simpleToken(lex, Equal)
 	}
-	panic(lex.fmtError(fmt.Sprintf("unexpected character %q", r)))
+	panic(lex.fmtError(fmt.Sprintf("unexpected character %q (%x)", r, r)))
 }
 
 func (lex *Lexer) GetString(token Token) string {

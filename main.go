@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	lang "github.com/alligator/advent-of-code-2021-lang/src"
@@ -30,7 +31,7 @@ func main() {
 		return
 	}
 
-	l := lang.NewLexer(string(f))
+	l := lang.NewLexer(strings.TrimSpace(string(f)))
 
 	if *dbgLex {
 		for {
