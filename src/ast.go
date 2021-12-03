@@ -213,10 +213,11 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 	case *ExprNum:
 		ap.printIndented("ExprNum", node.num)
 	case *ExprBinary:
-		ap.printIndented("ExprBinary")
+		ap.printIndented("ExprBinary", node.op.String())
+		ap.depth++
 		ap.printExpr(&node.lhs)
-		ap.printIndented("op:", node.op)
 		ap.printExpr(&node.rhs)
+		ap.depth--
 	case *ExprFuncall:
 		ap.printIndented("ExprFuncall", node.identifier)
 		ap.depth++

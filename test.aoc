@@ -5,6 +5,7 @@ file: '123
 part1: {
   var w = split('hello there', ' ')
   print(w)
+  print(5 - 2)
   match w {
     [a, b]: {
       print('a is', a)

@@ -129,7 +129,7 @@ func (p *Parser) expression() Expr {
 	lhs := p.unary()
 
 	switch p.token.Tag {
-	case Equal, EqualEqual, Star, Plus, Greater, GreaterEqual:
+	case Equal, EqualEqual, Star, Plus, Greater, GreaterEqual, Minus:
 		op := p.token.Tag
 		p.advance()
 		rhs := p.expression()

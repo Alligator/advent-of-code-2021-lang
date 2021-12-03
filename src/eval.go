@@ -314,6 +314,14 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 			}
 			result := *lhs.Num + *rhs.Num
 			return Value{Tag: ValNum, Num: &result}
+		case Minus:
+			lhs := ev.evalExpr(&node.lhs)
+			rhs := ev.evalExpr(&node.rhs)
+			if lhs.Tag != ValNum || rhs.Tag != ValNum {
+				panic("- is only supported for numbers")
+			}
+			result := *lhs.Num - *rhs.Num
+			return Value{Tag: ValNum, Num: &result}
 		case Star:
 			lhs := ev.evalExpr(&node.lhs)
 			rhs := ev.evalExpr(&node.rhs)

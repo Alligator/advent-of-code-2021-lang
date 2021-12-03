@@ -34,13 +34,14 @@ const (
 	Match
 	LSquare
 	RSquare
+	Minus
 )
 
 func (t TokenTag) String() string {
 	return []string{
 		"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var",
 		"Equal", "EqualEqual", "Greater", "GreaterEqual", "For", "In", "Plus", "If", "Star", "Return",
-		"Continue", "Comma", "Match", "LSquare", "RSquare",
+		"Continue", "Comma", "Match", "LSquare", "RSquare", "Minus",
 	}[t]
 }
 
@@ -208,6 +209,8 @@ func (lex *Lexer) NextToken() Token {
 		return simpleToken(lex, LSquare)
 	case ']':
 		return simpleToken(lex, RSquare)
+	case '-':
+		return simpleToken(lex, Minus)
 	case '>':
 		if lex.peek() == '=' {
 			lex.advance()
