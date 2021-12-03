@@ -49,7 +49,7 @@ type ExprBinary struct {
 
 type ExprFuncall struct {
 	identifier Expr
-	arg        Expr
+	args       []Expr
 }
 
 type Stmt interface {
@@ -193,7 +193,9 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 	case *ExprFuncall:
 		ap.printIndented("ExprFuncall")
 		ap.printIndented("func:", node.identifier)
-		ap.printExpr(&node.arg)
+		for _, arg := range node.args {
+			ap.printExpr(&arg)
+		}
 	default:
 		ap.printIndented("UNKNOWN", fmt.Sprintf("%#v", node))
 	}

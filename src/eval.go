@@ -21,7 +21,7 @@ type Value struct {
 	Str      *string
 	Num      *int
 	Array    *[]Value
-	NativeFn func(Value) Value
+	NativeFn func([]Value) Value
 }
 
 var Nil = Value{Tag: ValNil}
@@ -103,6 +103,7 @@ func NewEvaluator(prog *Program) Evaluator {
 	ev.setEnv("print", Value{Tag: ValNativeFn, NativeFn: nativePrint})
 	ev.setEnv("num", Value{Tag: ValNativeFn, NativeFn: nativeNum})
 	ev.setEnv("read", Value{Tag: ValNativeFn, NativeFn: nativeRead})
+	ev.setEnv("split", Value{Tag: ValNativeFn, NativeFn: nativeSplit})
 
 	ev.evalProgram(prog)
 	return ev
@@ -261,8 +262,11 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 			fmt.Printf("%#v\n", fnVal)
 			panic("attempted to call non function")
 		}
-		arg := ev.evalExpr(&node.arg)
-		return fnVal.NativeFn(arg)
+		args := make([]Value, 0)
+		for _, arg := range node.args {
+			args = append(args, ev.evalExpr(&arg))
+		}
+		return fnVal.NativeFn(args)
 	case *ExprBinary:
 		switch node.op {
 		case Equal:

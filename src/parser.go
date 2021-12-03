@@ -127,9 +127,18 @@ func (p *Parser) unary() Expr {
 	switch p.token.Tag {
 	case LParen:
 		p.consume(LParen)
-		expr := p.expression()
+		args := make([]Expr, 0)
+		for {
+			arg := p.expression()
+			args = append(args, arg)
+			if p.token.Tag == Comma {
+				p.consume(Comma)
+			} else {
+				break
+			}
+		}
 		p.consume(RParen)
-		return &ExprFuncall{lhs, expr}
+		return &ExprFuncall{lhs, args}
 	}
 	return lhs
 }

@@ -30,13 +30,14 @@ const (
 	Star
 	Return
 	Continue
+	Comma
 )
 
 func (t TokenTag) String() string {
 	return []string{
 		"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var",
 		"Equal", "EqualEqual", "Greater", "GreaterEqual", "For", "In", "Plus", "If", "Star", "Return",
-		"Continue",
+		"Continue", "Comma",
 	}[t]
 }
 
@@ -192,6 +193,8 @@ func (lex *Lexer) NextToken() Token {
 		return simpleToken(lex, Star)
 	case '+':
 		return simpleToken(lex, Plus)
+	case ',':
+		return simpleToken(lex, Comma)
 	case '>':
 		if lex.peek() == '=' {
 			lex.advance()
