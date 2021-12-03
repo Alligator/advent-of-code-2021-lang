@@ -105,6 +105,10 @@ func (lex *Lexer) skipWhitespace() {
 		switch lex.peek() {
 		case ' ', '\n', '\r':
 			lex.advance()
+		case '#':
+			for lex.peek() != '\n' {
+				lex.advance()
+			}
 		default:
 			return
 		}
