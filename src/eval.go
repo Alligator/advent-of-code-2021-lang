@@ -16,6 +16,10 @@ const (
 	ValNativeFn
 )
 
+func (t ValueTag) String() string {
+	return []string{"nil", "string", "num", "array", "nativeFn"}[t]
+}
+
 type Value struct {
 	Tag      ValueTag
 	Str      *string
@@ -58,7 +62,7 @@ func (v Value) isTruthy() bool {
 
 func (v Value) CheckTagOrPanic(expectedTag ValueTag) {
 	if v.Tag != expectedTag {
-		panic(fmt.Errorf("expected a %v but found a %v", expectedTag, v.Tag))
+		panic(fmt.Errorf("expected a %s but found a %s", expectedTag.String(), v.Tag.String()))
 	}
 }
 
@@ -67,7 +71,7 @@ func (v Value) Compare(b Value) (bool, error) {
 	case v.Tag == ValNum && b.Tag == ValNum:
 		return *v.Num == *b.Num, nil
 	}
-	return false, fmt.Errorf("cannot compare %v and %v", v.Tag, b.Tag)
+	return false, fmt.Errorf("cannot compare %s and %s", v.Tag.String(), b.Tag.String())
 }
 
 type Env struct {

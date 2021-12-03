@@ -180,7 +180,7 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 	ap.depth++
 	switch node := (*expr).(type) {
 	case *ExprString:
-		ap.printIndented("ExprString", "'"+node.str+"'")
+		ap.printIndented("ExprString", "\""+node.str+"\"")
 	case *ExprIdentifier:
 		ap.printIndented("ExprIdentifier", node.identifier)
 	case *ExprNum:
