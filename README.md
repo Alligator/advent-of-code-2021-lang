@@ -6,7 +6,7 @@ a hacky tree-walk interpreter in go.
 
 solutions written in this are [here](https://github.com/Alligator/advent-of-code-2021).
 
-## features
+## features
 
 - only designed for advent of code
 - built in bechmarking and test runner
