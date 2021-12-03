@@ -47,21 +47,23 @@ type Token struct {
 }
 
 type Lexer struct {
-	src  string
-	pos  int
-	line int
+	src        string
+	pos        int
+	line       int
+	tokenStart int
 }
 
 func NewLexer(src string) Lexer {
 	return Lexer{
-		src:  src,
-		pos:  0,
-		line: 1,
+		src:        src,
+		pos:        0,
+		line:       1,
+		tokenStart: 0,
 	}
 }
 
 func simpleToken(lex *Lexer, tag TokenTag) Token {
-	return Token{tag, lex.pos, 0}
+	return Token{tag, lex.tokenStart, 0}
 }
 
 func stringToken(lex *Lexer, tag TokenTag, start int) Token {
@@ -139,21 +141,19 @@ func (lex *Lexer) identifier() Token {
 }
 
 func (lex *Lexer) string() Token {
-	start := lex.pos
 	for lex.peek() != '\'' {
 		lex.advance()
 	}
-	t := stringToken(lex, Str, start)
+	t := stringToken(lex, Str, lex.tokenStart+1)
 	lex.consume('\'')
 	return t
 }
 
 func (lex *Lexer) number() Token {
-	start := lex.pos
 	for unicode.IsDigit(lex.peek()) {
 		lex.advance()
 	}
-	return stringToken(lex, Num, start)
+	return stringToken(lex, Num, lex.tokenStart)
 }
 
 func (lex *Lexer) NextToken() Token {
@@ -163,6 +163,7 @@ func (lex *Lexer) NextToken() Token {
 
 	lex.skipWhitespace()
 	r := lex.peek()
+	lex.tokenStart = lex.pos
 
 	if unicode.IsLetter(r) {
 		return lex.identifier()
@@ -215,12 +216,12 @@ func (lex *Lexer) GetLineAndCol(token Token) (int, int) {
 	line := 1
 	lineStart := 0
 	for i, r := range lex.src {
+		if i >= token.Pos {
+			break
+		}
 		if r == '\n' {
 			line++
 			lineStart = i + 1
-		}
-		if i > token.Pos {
-			break
 		}
 	}
 	return line, token.Pos - lineStart

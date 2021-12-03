@@ -34,13 +34,24 @@ func main() {
 	l := lang.NewLexer(strings.TrimSpace(string(f)))
 
 	if *dbgLex {
+		line := 0
+		lines := strings.Split(strings.TrimSpace(string(f)), "\n")
 		for {
 			t := l.NextToken()
-			fmt.Printf("%v\n", t)
+			tline, tcol := l.GetLineAndCol(t)
+			if tline != line {
+				line = tline
+				if line > 1 {
+					fmt.Print("\n\n")
+				}
+				fmt.Printf("%s\n", lines[line-1])
+			}
+			fmt.Printf("(%v %d %d) ", t.Tag, tline, tcol)
 			if t.Tag == lang.EOF {
 				break
 			}
 		}
+		fmt.Print("\n")
 		return
 	}
 
@@ -96,7 +107,7 @@ func run(ev *lang.Evaluator) {
 	fmt.Printf("part1: %s\n", evalSection(ev, "part1").String())
 	if ev.HasSection("part2") {
 		fmt.Printf("part2: %s\n", evalSection(ev, "part2").String())
-}
+	}
 }
 
 func evalSection(ev *lang.Evaluator, name string) lang.Value {
