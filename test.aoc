@@ -3,5 +3,12 @@ file: '123
 789'
 
 part1: {
-  print(input)
+  var w = split('hello there', ' ')
+  print(w)
+  match w {
+    [a, b]: {
+      print('a is', a)
+      print('b is', b)
+    }
+  }
 }

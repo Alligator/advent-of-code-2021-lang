@@ -76,6 +76,8 @@ func (p *Parser) statement() Stmt {
 	case Continue:
 		p.consume(Continue)
 		return &StmtContinue{}
+	case Match:
+		return p.matchStmt()
 	default:
 		expr := p.expression()
 		return &StmtExpr{expr}
@@ -106,6 +108,21 @@ func (p *Parser) ifStmt() Stmt {
 	condition := p.expression()
 	body := p.block()
 	return &StmtIf{condition, body}
+}
+
+func (p *Parser) matchStmt() Stmt {
+	p.consume(Match)
+	val := p.expression()
+	p.consume(LCurly)
+	cases := make([]MatchCase, 0)
+	for p.token.Tag != RCurly {
+		cond := p.expression()
+		p.consume(Colon)
+		body := p.block()
+		cases = append(cases, MatchCase{cond, body})
+	}
+	p.consume(RCurly)
+	return &StmtMatch{val, cases}
 }
 
 func (p *Parser) expression() Expr {
@@ -151,6 +168,8 @@ func (p *Parser) primary() Expr {
 		return p.number()
 	case Identifier:
 		return p.identifier()
+	case LSquare:
+		return p.array()
 	default:
 		panic(p.fmtError(fmt.Sprintf("expected a value but found %s", p.token.Tag)))
 	}
@@ -176,6 +195,19 @@ func (p *Parser) identifier() Expr {
 	p.consume(Identifier)
 	ident := p.lex.GetString(p.prevToken)
 	return &ExprIdentifier{ident}
+}
+
+func (p *Parser) array() Expr {
+	p.consume(LSquare)
+	items := make([]Expr, 0)
+	for p.token.Tag != RSquare {
+		items = append(items, p.expression())
+		if p.token.Tag == Comma {
+			p.consume(Comma)
+		}
+	}
+	p.consume(RSquare)
+	return &ExprArray{items}
 }
 
 func (p *Parser) Parse() Program {

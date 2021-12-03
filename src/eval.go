@@ -30,7 +30,7 @@ type Value struct {
 
 var Nil = Value{Tag: ValNil}
 
-func (v Value) String() string {
+func (v Value) Repr() string {
 	switch v.Tag {
 	case ValNil:
 		return "nil"
@@ -42,7 +42,29 @@ func (v Value) String() string {
 		var sb strings.Builder
 		sb.WriteString("[ ")
 		for _, val := range *v.Array {
-			sb.WriteString(val.String())
+			sb.WriteString(val.Repr())
+			sb.WriteString(", ")
+		}
+		sb.WriteString("\b\b ]")
+		return sb.String()
+	default:
+		return fmt.Sprintf("<unknown> %#v\n", v)
+	}
+}
+
+func (v Value) String() string {
+	switch v.Tag {
+	case ValNil:
+		return "nil"
+	case ValStr:
+		return *v.Str
+	case ValNum:
+		return strconv.Itoa(*v.Num)
+	case ValArray:
+		var sb strings.Builder
+		sb.WriteString("[ ")
+		for _, val := range *v.Array {
+			sb.WriteString(val.Repr())
 			sb.WriteString(", ")
 		}
 		sb.WriteString("\b\b ]")
@@ -70,6 +92,8 @@ func (v Value) Compare(b Value) (bool, error) {
 	switch {
 	case v.Tag == ValNum && b.Tag == ValNum:
 		return *v.Num == *b.Num, nil
+	case v.Tag == ValStr && b.Tag == ValStr:
+		return *v.Str == *b.Str, nil
 	}
 	return false, fmt.Errorf("cannot compare %s and %s", v.Tag.String(), b.Tag.String())
 }
@@ -232,7 +256,7 @@ func (ev *Evaluator) handleSectionReturn() {
 				env = env.parent
 			}
 			ev.env = env
-			fmt.Printf("%s returned %s\n", (*ev.section).getName(), e.String())
+			fmt.Printf("%s returned %s\n", (*ev.section).getName(), e.Repr())
 			ev.section = nil
 		default:
 			panic(r)
@@ -357,8 +381,60 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 		panic(val) // control flow panic
 	case *StmtContinue:
 		panic(*node) // control flow panic
+	case *StmtMatch:
+		ev.match(node)
 	default:
 		panic(fmt.Sprintf("unhandled statement type %#v\n", node))
+	}
+}
+
+func (ev *Evaluator) match(match *StmtMatch) {
+	candidate := ev.evalExpr(&match.value)
+
+MatchLoop:
+	for _, c := range match.cases {
+		switch pattern := c.cond.(type) {
+		case *ExprArray:
+			if candidate.Tag != ValArray {
+				continue
+			}
+
+			vars := make(map[string]Value)
+			for index, item := range pattern.items {
+				if index >= len(*candidate.Array) {
+					continue MatchLoop
+				}
+
+				switch itemNode := item.(type) {
+				case *ExprIdentifier:
+					vars[itemNode.identifier] = (*candidate.Array)[index]
+				default:
+					itemVal := ev.evalExpr(&item)
+					result, err := (*candidate.Array)[index].Compare(itemVal)
+					if err != nil {
+						panic(err)
+					}
+					if !result {
+						continue MatchLoop
+					}
+				}
+
+			}
+
+			// we found a match
+			ev.pushEnv()
+			for k, v := range vars {
+				ev.env.vars[k] = v
+			}
+
+			for _, stmt := range c.body {
+				ev.evalStmt(&stmt)
+			}
+			ev.popEnv()
+			return
+		default:
+			panic(fmt.Errorf("unsupported match type %v", c.cond))
+		}
 	}
 }
 

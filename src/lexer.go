@@ -31,13 +31,16 @@ const (
 	Return
 	Continue
 	Comma
+	Match
+	LSquare
+	RSquare
 )
 
 func (t TokenTag) String() string {
 	return []string{
 		"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var",
 		"Equal", "EqualEqual", "Greater", "GreaterEqual", "For", "In", "Plus", "If", "Star", "Return",
-		"Continue", "Comma",
+		"Continue", "Comma", "Match", "LSquare", "RSquare",
 	}[t]
 }
 
@@ -140,6 +143,8 @@ func (lex *Lexer) identifier() Token {
 		return simpleToken(lex, Return)
 	case "continue":
 		return simpleToken(lex, Continue)
+	case "match":
+		return simpleToken(lex, Match)
 	default:
 		return stringToken(lex, Identifier, start)
 	}
@@ -199,6 +204,10 @@ func (lex *Lexer) NextToken() Token {
 		return simpleToken(lex, Plus)
 	case ',':
 		return simpleToken(lex, Comma)
+	case '[':
+		return simpleToken(lex, LSquare)
+	case ']':
+		return simpleToken(lex, RSquare)
 	case '>':
 		if lex.peek() == '=' {
 			lex.advance()

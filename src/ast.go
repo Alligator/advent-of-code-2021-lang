@@ -41,6 +41,10 @@ type ExprNum struct {
 	num int
 }
 
+type ExprArray struct {
+	items []Expr
+}
+
 type ExprBinary struct {
 	lhs Expr
 	rhs Expr
@@ -80,6 +84,16 @@ type StmtReturn struct {
 	value Expr
 }
 
+type StmtMatch struct {
+	value Expr
+	cases []MatchCase
+}
+
+type MatchCase struct {
+	cond Expr
+	body []Stmt
+}
+
 type StmtContinue struct{}
 
 // impelement type guards
@@ -89,6 +103,7 @@ func (*SectionBlock) sectionNode() {}
 func (*ExprString) exprNode()     {}
 func (*ExprIdentifier) exprNode() {}
 func (*ExprNum) exprNode()        {}
+func (*ExprArray) exprNode()      {}
 func (*ExprFuncall) exprNode()    {}
 func (*ExprBinary) exprNode()     {}
 
@@ -98,6 +113,7 @@ func (*StmtFor) stmtNode()      {}
 func (*StmtIf) stmtNode()       {}
 func (*StmtReturn) stmtNode()   {}
 func (*StmtContinue) stmtNode() {}
+func (*StmtMatch) stmtNode()    {}
 
 type AstPrinter struct {
 	depth uint8
@@ -123,8 +139,7 @@ func (ap *AstPrinter) printSection(section *Section) {
 	switch node := (*section).(type) {
 	case *SectionBlock:
 		ap.depth++
-		ap.printIndented("SectionBlock")
-		ap.printIndented("label:", node.label)
+		ap.printIndented("SectionBlock", node.label)
 		ap.depth++
 		for _, stmt := range node.block {
 			ap.printStmt(&stmt)
@@ -133,8 +148,7 @@ func (ap *AstPrinter) printSection(section *Section) {
 		ap.depth--
 	case *SectionExpr:
 		ap.depth++
-		ap.printIndented("SectionExpr")
-		ap.printIndented("label:", node.label)
+		ap.printIndented("SectionExpr", node.label)
 		ap.depth++
 		ap.printExpr(&node.expression)
 		ap.depth--
@@ -146,38 +160,51 @@ func (ap *AstPrinter) printSection(section *Section) {
 }
 
 func (ap *AstPrinter) printStmt(stmt *Stmt) {
-	ap.printIndented("Stmt")
-	ap.depth++
 	switch node := (*stmt).(type) {
 	case *StmtVar:
-		ap.printIndented("StmtVar")
-		ap.printIndented("ident:", node.identifier)
+		ap.printIndented("StmtVar", node.identifier)
+		ap.depth++
 		ap.printExpr(&node.value)
+		ap.depth--
 	case *StmtFor:
-		ap.printIndented("StmtFor")
-		ap.printIndented("ident:", node.identifier)
+		ap.printIndented("StmtFor", node.identifier)
+		ap.depth++
 		ap.printExpr(&node.value)
 		for _, stmt := range node.body {
 			ap.printStmt(&stmt)
 		}
+		ap.depth--
 	case *StmtExpr:
 		ap.printIndented("StmtExpr")
+		ap.depth++
 		ap.printExpr(&node.expr)
+		ap.depth--
 	case *StmtIf:
 		ap.printIndented("StmtIf")
 		ap.printExpr(&node.condition)
 		for _, stmt := range node.body {
 			ap.printStmt(&stmt)
 		}
+	case *StmtMatch:
+		ap.printIndented("StmtMatch")
+		ap.depth++
+		ap.printExpr(&node.value)
+		for _, c := range node.cases {
+			ap.printIndented("MatchCase")
+			ap.depth++
+			ap.printExpr(&c.cond)
+			for _, s := range c.body {
+				ap.printStmt(&s)
+			}
+			ap.depth--
+		}
+		ap.depth--
 	default:
 		ap.printIndented("UNKNOWN", fmt.Sprintf("%#v", node))
 	}
-	ap.depth--
 }
 
 func (ap *AstPrinter) printExpr(expr *Expr) {
-	ap.printIndented("Expr")
-	ap.depth++
 	switch node := (*expr).(type) {
 	case *ExprString:
 		ap.printIndented("ExprString", "\""+node.str+"\"")
@@ -191,15 +218,22 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 		ap.printIndented("op:", node.op)
 		ap.printExpr(&node.rhs)
 	case *ExprFuncall:
-		ap.printIndented("ExprFuncall")
-		ap.printIndented("func:", node.identifier)
+		ap.printIndented("ExprFuncall", node.identifier)
+		ap.depth++
 		for _, arg := range node.args {
 			ap.printExpr(&arg)
 		}
+		ap.depth--
+	case *ExprArray:
+		ap.printIndented("Array")
+		ap.depth++
+		for _, v := range node.items {
+			ap.printExpr(&v)
+		}
+		ap.depth--
 	default:
 		ap.printIndented("UNKNOWN", fmt.Sprintf("%#v", node))
 	}
-	ap.depth--
 }
 
 func PrettyPrint(prog *Program) {

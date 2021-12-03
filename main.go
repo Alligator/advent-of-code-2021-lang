@@ -94,7 +94,7 @@ func testSection(ev *lang.Evaluator, expectedSection string, actualSection strin
 	if res {
 		fmt.Printf("\x1b[92m✓\x1b[0m %s\n", actualSection)
 	} else {
-		fmt.Printf("\x1b[91m✗\x1b[0m %s\n  expected %s\n       got %s\n", actualSection, expected.String(), actual.String())
+		fmt.Printf("\x1b[91m✗\x1b[0m %s\n  expected %s\n       got %s\n", actualSection, expected.Repr(), actual.Repr())
 	}
 }
 
@@ -104,9 +104,9 @@ func run(ev *lang.Evaluator) {
 		panic("file section must evaluate to a string")
 	}
 	ev.ReadInput(*f.Str)
-	fmt.Printf("part1: %s\n", evalSection(ev, "part1").String())
+	fmt.Printf("part1: %s\n", evalSection(ev, "part1").Repr())
 	if ev.HasSection("part2") {
-		fmt.Printf("part2: %s\n", evalSection(ev, "part2").String())
+		fmt.Printf("part2: %s\n", evalSection(ev, "part2").Repr())
 	}
 }
 
