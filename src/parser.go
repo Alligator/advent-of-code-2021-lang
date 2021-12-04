@@ -170,6 +170,11 @@ func (p *Parser) primary() Expr {
 		return p.identifier()
 	case LSquare:
 		return p.array()
+	case LParen:
+		p.consume(LParen)
+		expr := p.expression()
+		p.consume(RParen)
+		return expr
 	default:
 		panic(p.fmtError(fmt.Sprintf("expected a value but found %s", p.token.Tag)))
 	}
