@@ -108,17 +108,28 @@ func (p *Parser) forLoop() Stmt {
 	p.consume(For)
 	p.consume(Identifier)
 	ident := p.lex.GetString(p.prevToken)
+	indexIdent := ""
+	if p.token.Tag == Comma {
+		p.consume(Comma)
+		p.consume(Identifier)
+		indexIdent = p.lex.GetString(p.prevToken)
+	}
 	p.consume(In)
 	val := p.expression()
 	body := p.block()
-	return &StmtFor{ident, val, body}
+	return &StmtFor{ident, indexIdent, val, body}
 }
 
 func (p *Parser) ifStmt() Stmt {
 	p.consume(If)
 	condition := p.expression()
 	body := p.block()
-	return &StmtIf{condition, body}
+	elseBody := make([]Stmt, 0)
+	if p.token.Tag == Else {
+		p.consume(Else)
+		elseBody = p.block()
+	}
+	return &StmtIf{condition, body, elseBody}
 }
 
 func (p *Parser) matchStmt() Stmt {
@@ -153,11 +164,11 @@ func (p *Parser) expressionWithPrec(prec Precedence) Expr {
 		switch op {
 		case Equal:
 			opLevel = PrecAssign
-		case EqualEqual, Greater, GreaterEqual:
+		case EqualEqual, Greater, GreaterEqual, Less:
 			opLevel = PrecCompare
 		case Plus, Minus:
 			opLevel = PrecSum
-		case Star:
+		case Star, Slash:
 			opLevel = PrecProduct
 		default:
 			return lhs
@@ -190,6 +201,11 @@ func (p *Parser) unary() Expr {
 		}
 		p.consume(RParen)
 		return &ExprFuncall{lhs, args}
+	case LSquare:
+		p.consume(LSquare)
+		index := p.expression()
+		p.consume(RSquare)
+		return &ExprBinary{lhs, index, LSquare}
 	}
 	return lhs
 }

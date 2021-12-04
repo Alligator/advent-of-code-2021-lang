@@ -56,3 +56,14 @@ func nativeSplit(args []Value) Value {
 	}
 	return Value{Tag: ValArray, Array: &arr}
 }
+
+func nativeLen(args []Value) Value {
+	l := 0
+	switch args[0].Tag {
+	case ValArray:
+		l = len(*args[0].Array)
+	case ValStr:
+		l = len(*args[0].Str)
+	}
+	return Value{Tag: ValNum, Num: &l}
+}

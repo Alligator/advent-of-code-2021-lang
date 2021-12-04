@@ -70,14 +70,16 @@ type StmtVar struct {
 }
 
 type StmtFor struct {
-	identifier string
-	value      Expr
-	body       []Stmt
+	identifier      string
+	indexIdentifier string
+	value           Expr
+	body            []Stmt
 }
 
 type StmtIf struct {
 	condition Expr
 	body      []Stmt
+	elseBody  []Stmt
 }
 
 type StmtReturn struct {
@@ -181,10 +183,15 @@ func (ap *AstPrinter) printStmt(stmt *Stmt) {
 		ap.depth--
 	case *StmtIf:
 		ap.printIndented("StmtIf")
+		ap.depth++
 		ap.printExpr(&node.condition)
 		for _, stmt := range node.body {
 			ap.printStmt(&stmt)
 		}
+		for _, stmt := range node.elseBody {
+			ap.printStmt(&stmt)
+		}
+		ap.depth--
 	case *StmtMatch:
 		ap.printIndented("StmtMatch")
 		ap.depth++

@@ -103,18 +103,6 @@ type Env struct {
 	vars   map[string]Value
 }
 
-func (env *Env) depth() int {
-	depth := 0
-	cenv := env
-	for cenv != nil {
-		if cenv.parent != nil {
-			depth++
-		}
-		cenv = cenv.parent
-	}
-	return depth
-}
-
 type Evaluator struct {
 	sections map[string]Section
 	env      *Env
@@ -132,6 +120,7 @@ func NewEvaluator(prog *Program) Evaluator {
 	ev.setEnv("num", Value{Tag: ValNativeFn, NativeFn: nativeNum})
 	ev.setEnv("read", Value{Tag: ValNativeFn, NativeFn: nativeRead})
 	ev.setEnv("split", Value{Tag: ValNativeFn, NativeFn: nativeSplit})
+	ev.setEnv("len", Value{Tag: ValNativeFn, NativeFn: nativeLen})
 
 	ev.evalProgram(prog)
 	return ev
@@ -219,7 +208,6 @@ func (ev *Evaluator) EvalSection(name string) (retVal Value) {
 			}
 		}
 	}()
-	// defer ev.handleSectionReturn()
 
 	if ev.section != nil {
 		panic("cannot nest sections")
@@ -244,24 +232,6 @@ func (ev *Evaluator) EvalSection(name string) (retVal Value) {
 func (ev *Evaluator) HasSection(name string) bool {
 	_, present := ev.sections[name]
 	return present
-}
-
-func (ev *Evaluator) handleSectionReturn() {
-	if r := recover(); r != nil {
-		switch e := r.(type) {
-		case Value:
-			// unwind the stack
-			env := ev.env
-			for env.parent != nil {
-				env = env.parent
-			}
-			ev.env = env
-			fmt.Printf("%s returned %s\n", (*ev.section).getName(), e.Repr())
-			ev.section = nil
-		default:
-			panic(r)
-		}
-	}
 }
 
 func (ev *Evaluator) evalBlock(block []Stmt) {
@@ -310,14 +280,29 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 
 func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 	if expr.op == Equal {
-		lhs, ok := expr.lhs.(*ExprIdentifier)
-		if !ok {
-			panic("lhs of an expression must be an identifier")
+		switch node := expr.lhs.(type) {
+		case *ExprIdentifier:
+			ident := node.identifier
+			val := ev.evalExpr(&expr.rhs)
+			ev.updateEnv(ident, val)
+			return val
+		case *ExprBinary:
+			if node.op != LSquare {
+				break
+			}
+			array := ev.evalExpr(&node.lhs)
+			if array.Tag != ValArray {
+				panic(fmt.Errorf("%v is not subscriptable", array.Tag))
+			}
+			index := ev.evalExpr(&node.rhs)
+			if index.Tag != ValNum {
+				panic("attempt to subscript with non-numeric value")
+			}
+			val := ev.evalExpr(&expr.rhs)
+			(*array.Array)[*index.Num] = val
+			return val
 		}
-		ident := lhs.identifier
-		val := ev.evalExpr(&expr.rhs)
-		ev.updateEnv(ident, val)
-		return val
+		panic("lhs of assignment is not assignable")
 	}
 
 	lhs := ev.evalExpr(&expr.lhs)
@@ -342,6 +327,12 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 		result := *lhs.Num * *rhs.Num
 		return Value{Tag: ValNum, Num: &result}
+	case Slash:
+		if lhs.Tag != ValNum || rhs.Tag != ValNum {
+			panic("/ is only supported for numbers")
+		}
+		result := *lhs.Num / *rhs.Num
+		return Value{Tag: ValNum, Num: &result}
 	case EqualEqual:
 		result, err := lhs.Compare(rhs)
 		if err != nil {
@@ -352,7 +343,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 			num = 1
 		}
 		return Value{Tag: ValNum, Num: &num}
-	case Greater, GreaterEqual:
+	case Greater, GreaterEqual, Less:
 		switch {
 		case lhs.Tag == ValNum && rhs.Tag == ValNum:
 			result := false
@@ -361,6 +352,8 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 				result = *lhs.Num > *rhs.Num
 			case GreaterEqual:
 				result = *lhs.Num >= *rhs.Num
+			case Less:
+				result = *lhs.Num < *rhs.Num
 			}
 			num := 0
 			if result {
@@ -369,8 +362,13 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 			return Value{Tag: ValNum, Num: &num}
 		}
 		panic(fmt.Errorf("cannot compare %v and %v", lhs.Tag, rhs.Tag))
+	case LSquare:
+		if lhs.Tag != ValArray || rhs.Tag != ValNum {
+			panic(fmt.Errorf("cannot subscript a %v with a %v", lhs.Tag, rhs.Tag))
+		}
+		return (*lhs.Array)[*rhs.Num]
 	default:
-		panic(fmt.Sprintf("unknown operator %s\n", expr.op))
+		panic(fmt.Errorf("unknown operator %s", expr.op))
 	}
 }
 
@@ -388,6 +386,8 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 		val := ev.evalExpr(&node.condition)
 		if val.isTruthy() {
 			ev.evalBlock(node.body)
+		} else if len(node.elseBody) > 0 {
+			ev.evalBlock(node.elseBody)
 		}
 	case *StmtReturn:
 		val := ev.evalExpr(&node.value)
@@ -457,16 +457,21 @@ func (ev *Evaluator) forLoop(node *StmtFor) {
 		panic("expected an array in for loop")
 	}
 	ev.pushEnv()
-	for _, val := range *val.Array {
-		ev.runForLoopBody(node, val)
+	for index, val := range *val.Array {
+		ev.runForLoopBody(node, val, index)
 	}
 	ev.popEnv()
 }
 
-func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value) {
+func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index int) {
 	// run the body of a for loop, handling continue statements
 	defer catchContinue(ev, ev.env)
+
 	ev.setEnv(node.identifier, val)
+	if node.indexIdentifier != "" {
+		ev.setEnv(node.indexIdentifier, Value{Tag: ValNum, Num: &index})
+	}
+
 	for _, stmt := range node.body {
 		ev.evalStmt(&stmt)
 	}
