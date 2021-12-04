@@ -112,6 +112,9 @@ func (lex *Lexer) skipWhitespace() {
 		case '#':
 			for lex.peek() != '\n' {
 				lex.advance()
+				if lex.pos >= len(lex.src) {
+					return
+				}
 			}
 		default:
 			return
