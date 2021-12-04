@@ -11,6 +11,17 @@ type Parser struct {
 	prevToken Token
 }
 
+type Precedence uint8
+
+const (
+	PrecNone Precedence = iota
+	PrecAssign
+	PrecCompare
+	PrecSum
+	PrecProduct
+	PrecHighest
+)
+
 func NewParser(lex *Lexer) Parser {
 	eof := Token{EOF, 0, 0}
 	return Parser{lex, eof, eof}
@@ -126,16 +137,39 @@ func (p *Parser) matchStmt() Stmt {
 }
 
 func (p *Parser) expression() Expr {
-	lhs := p.unary()
+	return p.expressionWithPrec(PrecNone)
+}
 
-	switch p.token.Tag {
-	case Equal, EqualEqual, Star, Plus, Greater, GreaterEqual, Minus:
+func (p *Parser) expressionWithPrec(prec Precedence) Expr {
+	if prec == PrecHighest {
+		return p.unary()
+	}
+
+	lhs := p.expressionWithPrec(prec + 1)
+
+	for {
 		op := p.token.Tag
-		p.advance()
-		rhs := p.expression()
-		return &ExprBinary{lhs, rhs, op}
-	default:
-		return lhs
+		opLevel := PrecNone
+		switch op {
+		case Equal:
+			opLevel = PrecAssign
+		case EqualEqual, Greater, GreaterEqual:
+			opLevel = PrecCompare
+		case Plus, Minus:
+			opLevel = PrecSum
+		case Star:
+			opLevel = PrecProduct
+		default:
+			return lhs
+		}
+
+		if opLevel >= prec {
+			p.advance()
+			rhs := p.expressionWithPrec(prec + 1)
+			lhs = &ExprBinary{lhs, rhs, op}
+		} else {
+			return lhs
+		}
 	}
 }
 
