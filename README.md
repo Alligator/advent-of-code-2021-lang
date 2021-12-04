@@ -11,4 +11,4 @@ solutions written in this are [here](https://github.com/Alligator/advent-of-code
 - only designed for advent of code
 - built in bechmarking and test runner
 - terrible error messages!
-- no operator precedence!
+- some operator precedence!
