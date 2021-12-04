@@ -296,76 +296,81 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 		}
 		return fnVal.NativeFn(args)
 	case *ExprBinary:
-		switch node.op {
-		case Equal:
-			lhs, ok := node.lhs.(*ExprIdentifier)
-			if !ok {
-				panic("lhs of an expression must be an identifier")
-			}
-			ident := lhs.identifier
-			val := ev.evalExpr(&node.rhs)
-			ev.updateEnv(ident, val)
-			return val
-		case Plus:
-			lhs := ev.evalExpr(&node.lhs)
-			rhs := ev.evalExpr(&node.rhs)
-			if lhs.Tag != ValNum || rhs.Tag != ValNum {
-				panic("+ is only supported for numbers")
-			}
-			result := *lhs.Num + *rhs.Num
-			return Value{Tag: ValNum, Num: &result}
-		case Minus:
-			lhs := ev.evalExpr(&node.lhs)
-			rhs := ev.evalExpr(&node.rhs)
-			if lhs.Tag != ValNum || rhs.Tag != ValNum {
-				panic("- is only supported for numbers")
-			}
-			result := *lhs.Num - *rhs.Num
-			return Value{Tag: ValNum, Num: &result}
-		case Star:
-			lhs := ev.evalExpr(&node.lhs)
-			rhs := ev.evalExpr(&node.rhs)
-			if lhs.Tag != ValNum || rhs.Tag != ValNum {
-				panic("* is only supported for numbers")
-			}
-			result := *lhs.Num * *rhs.Num
-			return Value{Tag: ValNum, Num: &result}
-		case EqualEqual:
-			lhs := ev.evalExpr(&node.lhs)
-			rhs := ev.evalExpr(&node.rhs)
-			result, err := lhs.Compare(rhs)
-			if err != nil {
-				panic(err)
+		return ev.evalBinaryExpr(node)
+	case *ExprArray:
+		items := make([]Value, 0)
+		for _, itemExpr := range node.items {
+			items = append(items, ev.evalExpr(&itemExpr))
+		}
+		return Value{Tag: ValArray, Array: &items}
+	default:
+		panic(fmt.Sprintf("unhandled expression type %#v\n", node))
+	}
+}
+
+func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
+	if expr.op == Equal {
+		lhs, ok := expr.lhs.(*ExprIdentifier)
+		if !ok {
+			panic("lhs of an expression must be an identifier")
+		}
+		ident := lhs.identifier
+		val := ev.evalExpr(&expr.rhs)
+		ev.updateEnv(ident, val)
+		return val
+	}
+
+	lhs := ev.evalExpr(&expr.lhs)
+	rhs := ev.evalExpr(&expr.rhs)
+
+	switch expr.op {
+	case Plus:
+		if lhs.Tag != ValNum || rhs.Tag != ValNum {
+			panic("+ is only supported for numbers")
+		}
+		result := *lhs.Num + *rhs.Num
+		return Value{Tag: ValNum, Num: &result}
+	case Minus:
+		if lhs.Tag != ValNum || rhs.Tag != ValNum {
+			panic("- is only supported for numbers")
+		}
+		result := *lhs.Num - *rhs.Num
+		return Value{Tag: ValNum, Num: &result}
+	case Star:
+		if lhs.Tag != ValNum || rhs.Tag != ValNum {
+			panic("* is only supported for numbers")
+		}
+		result := *lhs.Num * *rhs.Num
+		return Value{Tag: ValNum, Num: &result}
+	case EqualEqual:
+		result, err := lhs.Compare(rhs)
+		if err != nil {
+			panic(err)
+		}
+		num := 0
+		if result {
+			num = 1
+		}
+		return Value{Tag: ValNum, Num: &num}
+	case Greater, GreaterEqual:
+		switch {
+		case lhs.Tag == ValNum && rhs.Tag == ValNum:
+			result := false
+			switch expr.op {
+			case Greater:
+				result = *lhs.Num > *rhs.Num
+			case GreaterEqual:
+				result = *lhs.Num >= *rhs.Num
 			}
 			num := 0
 			if result {
 				num = 1
 			}
 			return Value{Tag: ValNum, Num: &num}
-		case Greater, GreaterEqual:
-			lhs := ev.evalExpr(&node.lhs)
-			rhs := ev.evalExpr(&node.rhs)
-			switch {
-			case lhs.Tag == ValNum && rhs.Tag == ValNum:
-				result := false
-				switch node.op {
-				case Greater:
-					result = *lhs.Num > *rhs.Num
-				case GreaterEqual:
-					result = *lhs.Num >= *rhs.Num
-				}
-				num := 0
-				if result {
-					num = 1
-				}
-				return Value{Tag: ValNum, Num: &num}
-			}
-			panic(fmt.Errorf("cannot compare %v and %v", lhs.Tag, rhs.Tag))
-		default:
-			panic(fmt.Sprintf("unknown operator %s\n", node.op))
 		}
+		panic(fmt.Errorf("cannot compare %v and %v", lhs.Tag, rhs.Tag))
 	default:
-		panic(fmt.Sprintf("unhandled expression type %#v\n", node))
+		panic(fmt.Sprintf("unknown operator %s\n", expr.op))
 	}
 }
 
