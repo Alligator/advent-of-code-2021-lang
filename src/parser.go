@@ -87,6 +87,9 @@ func (p *Parser) statement() Stmt {
 	case Continue:
 		p.consume(Continue)
 		return &StmtContinue{}
+	case Break:
+		p.consume(Break)
+		return &StmtBreak{}
 	case Match:
 		return p.matchStmt()
 	default:

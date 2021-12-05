@@ -394,6 +394,8 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 		panic(val) // control flow panic
 	case *StmtContinue:
 		panic(*node) // control flow panic
+	case *StmtBreak:
+		panic(*node) // control flow panic
 	case *StmtMatch:
 		ev.match(node)
 	default:
@@ -458,14 +460,17 @@ func (ev *Evaluator) forLoop(node *StmtFor) {
 	}
 	ev.pushEnv()
 	for index, val := range *val.Array {
-		ev.runForLoopBody(node, val, index)
+		stop := ev.runForLoopBody(node, val, index)
+		if stop {
+			break
+		}
 	}
 	ev.popEnv()
 }
 
-func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index int) {
-	// run the body of a for loop, handling continue statements
-	defer catchContinue(ev, ev.env)
+func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index int) (stop bool) {
+	stop = false
+	defer catchContinueOrBreak(ev, ev.env, &stop)
 
 	ev.setEnv(node.identifier, val)
 	if node.indexIdentifier != "" {
@@ -475,13 +480,20 @@ func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index int) {
 	for _, stmt := range node.body {
 		ev.evalStmt(&stmt)
 	}
+
+	return stop
 }
 
-func catchContinue(ev *Evaluator, rootEnv *Env) {
+func catchContinueOrBreak(ev *Evaluator, rootEnv *Env, stop *bool) {
 	if r := recover(); r != nil {
 		switch r.(type) {
 		case StmtContinue:
 			ev.env = rootEnv
+			*stop = false
+			return
+		case StmtBreak:
+			ev.env = rootEnv
+			*stop = true
 			return
 		default:
 			panic(r)

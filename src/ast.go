@@ -97,6 +97,7 @@ type MatchCase struct {
 }
 
 type StmtContinue struct{}
+type StmtBreak struct{}
 
 // impelement type guards
 func (*SectionExpr) sectionNode()  {}
@@ -114,8 +115,9 @@ func (*StmtVar) stmtNode()      {}
 func (*StmtFor) stmtNode()      {}
 func (*StmtIf) stmtNode()       {}
 func (*StmtReturn) stmtNode()   {}
-func (*StmtContinue) stmtNode() {}
 func (*StmtMatch) stmtNode()    {}
+func (*StmtContinue) stmtNode() {}
+func (*StmtBreak) stmtNode()    {}
 
 type AstPrinter struct {
 	depth uint8

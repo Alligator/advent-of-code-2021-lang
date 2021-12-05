@@ -38,13 +38,14 @@ const (
 	Slash
 	Else
 	Less
+	Break
 )
 
 func (t TokenTag) String() string {
 	return []string{
 		"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var",
 		"Equal", "EqualEqual", "Greater", "GreaterEqual", "For", "In", "Plus", "If", "Star", "Return",
-		"Continue", "Comma", "Match", "LSquare", "RSquare", "Minus", "Slash", "Else", "Less",
+		"Continue", "Comma", "Match", "LSquare", "RSquare", "Minus", "Slash", "Else", "Less", "Break",
 	}[t]
 }
 
@@ -150,6 +151,8 @@ func (lex *Lexer) identifier() Token {
 		return simpleToken(lex, Return)
 	case "continue":
 		return simpleToken(lex, Continue)
+	case "break":
+		return simpleToken(lex, Break)
 	case "match":
 		return simpleToken(lex, Match)
 	case "else":
