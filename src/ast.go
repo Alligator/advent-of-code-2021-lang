@@ -56,6 +56,12 @@ type ExprFuncall struct {
 	args       []Expr
 }
 
+type ExprFunc struct {
+	identifier string
+	args       []string
+	body       []Stmt
+}
+
 type Stmt interface {
 	stmtNode()
 }
@@ -108,6 +114,7 @@ func (*ExprIdentifier) exprNode() {}
 func (*ExprNum) exprNode()        {}
 func (*ExprArray) exprNode()      {}
 func (*ExprFuncall) exprNode()    {}
+func (*ExprFunc) exprNode()       {}
 func (*ExprBinary) exprNode()     {}
 
 func (*StmtExpr) stmtNode()     {}
@@ -239,6 +246,16 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 		ap.depth++
 		for _, v := range node.items {
 			ap.printExpr(&v)
+		}
+		ap.depth--
+	case *ExprFunc:
+		ap.printIndented("ExprFunc")
+		ap.depth++
+		for _, a := range node.args {
+			ap.printIndented("arg", a)
+		}
+		for _, s := range node.body {
+			ap.printStmt(&s)
 		}
 		ap.depth--
 	default:

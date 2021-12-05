@@ -14,10 +14,11 @@ const (
 	ValNum
 	ValArray
 	ValNativeFn
+	ValFn
 )
 
 func (t ValueTag) String() string {
-	return []string{"nil", "string", "num", "array", "nativeFn"}[t]
+	return []string{"nil", "string", "num", "array", "nativeFn", "fn"}[t]
 }
 
 type Value struct {
@@ -26,6 +27,7 @@ type Value struct {
 	Num      *int
 	Array    *[]Value
 	NativeFn func([]Value) Value
+	Fn       *ExprFunc
 }
 
 var Nil = Value{Tag: ValNil}
@@ -256,15 +258,24 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 		return *v
 	case *ExprFuncall:
 		fnVal := ev.evalExpr(&node.identifier)
-		if fnVal.Tag != ValNativeFn {
-			fmt.Printf("%#v\n", fnVal)
-			panic("attempted to call non function")
-		}
+
 		args := make([]Value, 0)
 		for _, arg := range node.args {
 			args = append(args, ev.evalExpr(&arg))
 		}
-		return fnVal.NativeFn(args)
+
+		switch fnVal.Tag {
+		case ValNativeFn:
+			return fnVal.NativeFn(args)
+		case ValFn:
+			return ev.fn(fnVal, args)
+		}
+
+		panic("attempted to call non function")
+	case *ExprFunc:
+		fnVal := Value{Tag: ValFn, Fn: node}
+		ev.setEnv(node.identifier, fnVal)
+		return fnVal
 	case *ExprBinary:
 		return ev.evalBinaryExpr(node)
 	case *ExprArray:
@@ -276,6 +287,41 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 	default:
 		panic(fmt.Sprintf("unhandled expression type %#v\n", node))
 	}
+}
+
+func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
+	retVal = Nil
+
+	defer func() {
+		if r := recover(); r != nil {
+			switch e := r.(type) {
+			case Value:
+				retVal = e
+				ev.popEnv()
+			default:
+				panic(r)
+			}
+		}
+	}()
+
+	fn := fnVal.Fn
+
+	if len(fn.args) != len(args) {
+		panic(fmt.Errorf("arity mismatch: %s expects %d arguments", fn.identifier, len(fn.args)))
+	}
+
+	ev.pushEnv()
+
+	for index, ident := range fn.args {
+		ev.setEnv(ident, args[index])
+	}
+
+	for _, stmt := range fn.body {
+		ev.evalStmt(&stmt)
+	}
+
+	ev.popEnv()
+	return retVal
 }
 
 func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {

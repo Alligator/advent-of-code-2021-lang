@@ -193,7 +193,7 @@ func (p *Parser) unary() Expr {
 	case LParen:
 		p.consume(LParen)
 		args := make([]Expr, 0)
-		for {
+		for p.token.Tag != RParen {
 			arg := p.expression()
 			args = append(args, arg)
 			if p.token.Tag == Comma {
@@ -228,6 +228,8 @@ func (p *Parser) primary() Expr {
 		expr := p.expression()
 		p.consume(RParen)
 		return expr
+	case Fn:
+		return p.fn()
 	default:
 		panic(p.fmtError(fmt.Sprintf("expected a value but found %s", p.token.Tag)))
 	}
@@ -266,6 +268,33 @@ func (p *Parser) array() Expr {
 	}
 	p.consume(RSquare)
 	return &ExprArray{items}
+}
+
+func (p *Parser) fn() Expr {
+	p.consume(Fn)
+
+	p.consume(Identifier)
+	ident := p.lex.GetString(p.prevToken)
+
+	p.consume(LParen)
+
+	args := make([]string, 0)
+	for p.token.Tag != RParen {
+		p.consume(Identifier)
+		args = append(args, p.lex.GetString(p.prevToken))
+		if p.token.Tag == Comma {
+			p.consume(Comma)
+		}
+	}
+
+	p.consume(RParen)
+
+	body := p.block()
+	return &ExprFunc{
+		identifier: ident,
+		args:       args,
+		body:       body,
+	}
 }
 
 func (p *Parser) Parse() Program {

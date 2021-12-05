@@ -39,6 +39,7 @@ const (
 	Else
 	Less
 	Break
+	Fn
 )
 
 func (t TokenTag) String() string {
@@ -46,6 +47,7 @@ func (t TokenTag) String() string {
 		"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var",
 		"Equal", "EqualEqual", "Greater", "GreaterEqual", "For", "In", "Plus", "If", "Star", "Return",
 		"Continue", "Comma", "Match", "LSquare", "RSquare", "Minus", "Slash", "Else", "Less", "Break",
+		"Fn",
 	}[t]
 }
 
@@ -157,6 +159,8 @@ func (lex *Lexer) identifier() Token {
 		return simpleToken(lex, Match)
 	case "else":
 		return simpleToken(lex, Else)
+	case "fn":
+		return simpleToken(lex, Fn)
 	default:
 		return stringToken(lex, Identifier, start)
 	}
