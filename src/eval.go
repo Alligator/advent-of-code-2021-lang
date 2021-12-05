@@ -42,12 +42,14 @@ func (v Value) Repr() string {
 		return strconv.Itoa(*v.Num)
 	case ValArray:
 		var sb strings.Builder
-		sb.WriteString("[ ")
-		for _, val := range *v.Array {
+		sb.WriteString("[")
+		for index, val := range *v.Array {
 			sb.WriteString(val.Repr())
-			sb.WriteString(", ")
+			if index < len(*v.Array)-1 {
+				sb.WriteString(", ")
+			}
 		}
-		sb.WriteString("\b\b ]")
+		sb.WriteString("]")
 		return sb.String()
 	default:
 		return fmt.Sprintf("<unknown> %#v\n", v)
@@ -63,14 +65,7 @@ func (v Value) String() string {
 	case ValNum:
 		return strconv.Itoa(*v.Num)
 	case ValArray:
-		var sb strings.Builder
-		sb.WriteString("[ ")
-		for _, val := range *v.Array {
-			sb.WriteString(val.Repr())
-			sb.WriteString(", ")
-		}
-		sb.WriteString("\b\b ]")
-		return sb.String()
+		return v.Repr()
 	default:
 		return fmt.Sprintf("<unknown> %#v\n", v)
 	}
@@ -174,7 +169,7 @@ func (ev *Evaluator) find(name string) (*Value, bool) {
 func (ev *Evaluator) ReadInput(input string) {
 	lines := make([]Value, 0)
 
-	for _, line := range strings.Split(input, "\n") {
+	for _, line := range strings.Split(strings.TrimSpace(input), "\n") {
 		l := line
 		lines = append(lines, Value{Tag: ValStr, Str: &l})
 	}
@@ -410,10 +405,14 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 		panic(fmt.Errorf("cannot compare %v and %v", lhs.Tag, rhs.Tag))
 	case LSquare:
-		if lhs.Tag != ValArray || rhs.Tag != ValNum {
-			panic(fmt.Errorf("cannot subscript a %v with a %v", lhs.Tag, rhs.Tag))
+		switch {
+		case lhs.Tag == ValArray && rhs.Tag == ValNum:
+			return (*lhs.Array)[*rhs.Num]
+		case lhs.Tag == ValStr && rhs.Tag == ValNum:
+			b := string((*lhs.Str)[*rhs.Num])
+			return Value{Tag: ValStr, Str: &b}
 		}
-		return (*lhs.Array)[*rhs.Num]
+		panic(fmt.Errorf("cannot subscript a %v with a %v", lhs.Tag, rhs.Tag))
 	default:
 		panic(fmt.Errorf("unknown operator %s", expr.op))
 	}
