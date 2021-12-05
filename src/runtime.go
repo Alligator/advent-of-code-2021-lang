@@ -67,3 +67,17 @@ func nativeLen(args []Value) Value {
 	}
 	return Value{Tag: ValNum, Num: &l}
 }
+
+func nativePush(args []Value) Value {
+	if len(args) < 2 {
+		panic("arg count mismatch")
+	}
+
+	if args[0].Tag != ValArray {
+		panic("can only push to an array")
+	}
+
+	array := *args[0].Array
+	array = append(array, args[1])
+	return Value{Tag: ValArray, Array: &array}
+}

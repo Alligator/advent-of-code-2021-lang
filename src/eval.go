@@ -123,6 +123,7 @@ func NewEvaluator(prog *Program) Evaluator {
 	ev.setEnv("read", Value{Tag: ValNativeFn, NativeFn: nativeRead})
 	ev.setEnv("split", Value{Tag: ValNativeFn, NativeFn: nativeSplit})
 	ev.setEnv("len", Value{Tag: ValNativeFn, NativeFn: nativeLen})
+	ev.setEnv("push", Value{Tag: ValNativeFn, NativeFn: nativePush})
 
 	ev.evalProgram(prog)
 	return ev
