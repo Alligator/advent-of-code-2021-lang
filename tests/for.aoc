@@ -1,0 +1,12 @@
+test: ''
+
+test_part1: 15
+
+part1: {
+  var num = 0
+  var arr = [1, 2, 3, 4, 5]
+  for item in arr {
+    num = num + item
+  }
+  return num
+}

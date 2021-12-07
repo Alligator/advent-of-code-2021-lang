@@ -1,0 +1,20 @@
+test: ''
+
+test_part1: 7
+test_part2: 14
+
+part1: {
+  if 1 == 2 {
+    return 14
+  } else {
+    return 7
+  }
+}
+
+part2: {
+  if 2 == 2 {
+    return 14
+  } else {
+    return 7
+  }
+}

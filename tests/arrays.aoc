@@ -1,0 +1,26 @@
+test: ''
+
+test_part1: 21
+test_part2: 21
+
+part1: {
+  var sum = 0
+  var arr = [0, 3 + 4, 5 + 6]
+  arr[0] = 1 + 2
+  for item in arr {
+    sum = sum + item
+  }
+  return sum
+}
+
+part2: {
+  var sum = 0
+  var arr = []
+  arr = push(arr, 1 + 2)
+  arr = push(arr, 3 + 4)
+  arr = push(arr, 5 + 6)
+  for item in arr {
+    sum = sum + item
+  }
+  return sum
+}

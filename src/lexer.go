@@ -81,8 +81,9 @@ func stringToken(lex *Lexer, tag TokenTag, start int) Token {
 	return Token{tag, start, lex.pos - start}
 }
 
-func (lex *Lexer) fmtError(msg string) string {
-	return fmt.Sprintf("lex error on line %d: %s\n", lex.line, msg)
+func (lex *Lexer) fmtError(msg string, args ...interface{}) LexError {
+	formattedMsg := fmt.Sprintf(msg, args...)
+	return LexError{formattedMsg, lex.line}
 }
 
 func (lex *Lexer) peek() rune {
@@ -104,7 +105,7 @@ func (lex *Lexer) advance() rune {
 func (lex *Lexer) consume(expected rune) rune {
 	r, size := utf8.DecodeRuneInString(lex.src[lex.pos:])
 	if r != expected {
-		panic(lex.fmtError(fmt.Sprintf("expected %q but saw %q", expected, r)))
+		panic(lex.fmtError("expected %q but saw %q", expected, r))
 	}
 	lex.pos += size
 	return r
@@ -243,7 +244,7 @@ func (lex *Lexer) NextToken() Token {
 		}
 		return simpleToken(lex, Equal)
 	}
-	panic(lex.fmtError(fmt.Sprintf("unexpected character %q (%x)", r, r)))
+	panic(lex.fmtError("unexpected character %q (%x)", r, r))
 }
 
 func (lex *Lexer) GetString(token Token) string {

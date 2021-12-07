@@ -2,77 +2,128 @@ package lang
 
 import "fmt"
 
+// interfaces
+type (
+	Node interface {
+		Token() *Token
+	}
+	Section interface {
+		Node
+		getName() string
+		sectionNode() // type guard
+	}
+	Expr interface {
+		Node
+		exprNode() // type guard
+	}
+	Stmt interface {
+		Node
+		stmtNode()
+	}
+)
+
+//
+// program
+//
 type Program struct {
 	sections []Section
 }
 
-type Section interface {
-	getName() string
-	sectionNode() // type guard
-}
+func (p *Program) Pos() int { return 0 }
 
+//
+// sections
+//
 type SectionExpr struct {
 	label      string
 	expression Expr
+	labelToken *Token
 }
-
-func (node *SectionExpr) getName() string { return node.label }
 
 type SectionBlock struct {
-	label string
-	block []Stmt
+	label        string
+	block        []Stmt
+	openingToken *Token
 }
 
+func (node *SectionExpr) Token() *Token  { return node.labelToken }
+func (node *SectionBlock) Token() *Token { return node.openingToken }
+
+func (node *SectionExpr) getName() string  { return node.label }
 func (node *SectionBlock) getName() string { return node.label }
 
-type Expr interface {
-	exprNode() // type guard
-}
+func (*SectionExpr) sectionNode()  {}
+func (*SectionBlock) sectionNode() {}
 
+//
+// expressions
+//
 type ExprString struct {
-	str string
+	str   string
+	token *Token
 }
 
 type ExprIdentifier struct {
 	identifier string
+	token      *Token
 }
 
 type ExprNum struct {
-	num int
+	num   int
+	token *Token
 }
 
 type ExprArray struct {
-	items []Expr
+	items        []Expr
+	openingToken *Token
 }
 
 type ExprBinary struct {
 	lhs Expr
 	rhs Expr
-	op  TokenTag
+	op  *Token
 }
 
 type ExprFuncall struct {
-	identifier Expr
-	args       []Expr
+	identifier      Expr
+	args            []Expr
+	identifierToken *Token
 }
 
 type ExprFunc struct {
-	identifier string
-	args       []string
-	body       []Stmt
+	identifier      string
+	args            []string
+	body            []Stmt
+	identifierToken *Token
 }
 
-type Stmt interface {
-	stmtNode()
-}
+func (e *ExprString) Token() *Token     { return e.token }
+func (e *ExprIdentifier) Token() *Token { return e.token }
+func (e *ExprNum) Token() *Token        { return e.token }
+func (e *ExprArray) Token() *Token      { return e.openingToken }
+func (e *ExprBinary) Token() *Token     { return e.op }
+func (e *ExprFuncall) Token() *Token    { return e.identifierToken }
+func (e *ExprFunc) Token() *Token       { return e.identifierToken }
 
+func (*ExprString) exprNode()     {}
+func (*ExprIdentifier) exprNode() {}
+func (*ExprNum) exprNode()        {}
+func (*ExprArray) exprNode()      {}
+func (*ExprBinary) exprNode()     {}
+func (*ExprFuncall) exprNode()    {}
+func (*ExprFunc) exprNode()       {}
+
+//
+// statements
+//
 type StmtExpr struct {
 	expr Expr
 }
 
 type StmtVar struct {
-	identifier string
-	value      Expr
+	identifier      string
+	value           Expr
+	identifierToken *Token
 }
 
 type StmtFor struct {
@@ -102,20 +153,22 @@ type MatchCase struct {
 	body []Stmt
 }
 
-type StmtContinue struct{}
-type StmtBreak struct{}
+type StmtContinue struct {
+	token *Token
+}
 
-// impelement type guards
-func (*SectionExpr) sectionNode()  {}
-func (*SectionBlock) sectionNode() {}
+type StmtBreak struct {
+	token *Token
+}
 
-func (*ExprString) exprNode()     {}
-func (*ExprIdentifier) exprNode() {}
-func (*ExprNum) exprNode()        {}
-func (*ExprArray) exprNode()      {}
-func (*ExprFuncall) exprNode()    {}
-func (*ExprFunc) exprNode()       {}
-func (*ExprBinary) exprNode()     {}
+func (s *StmtExpr) Token() *Token     { return s.expr.Token() }
+func (s *StmtVar) Token() *Token      { return s.identifierToken }
+func (s *StmtFor) Token() *Token      { return s.value.Token() }
+func (s *StmtIf) Token() *Token       { return s.condition.Token() }
+func (s *StmtReturn) Token() *Token   { return s.value.Token() }
+func (s *StmtMatch) Token() *Token    { return s.value.Token() }
+func (s *StmtContinue) Token() *Token { return s.token }
+func (s *StmtBreak) Token() *Token    { return s.token }
 
 func (*StmtExpr) stmtNode()     {}
 func (*StmtVar) stmtNode()      {}
@@ -229,7 +282,7 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 	case *ExprNum:
 		ap.printIndented("ExprNum", node.num)
 	case *ExprBinary:
-		ap.printIndented("ExprBinary", node.op.String())
+		ap.printIndented("ExprBinary", node.op.Tag.String())
 		ap.depth++
 		ap.printExpr(&node.lhs)
 		ap.printExpr(&node.rhs)

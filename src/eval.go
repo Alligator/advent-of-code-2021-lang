@@ -104,13 +104,15 @@ type Evaluator struct {
 	sections map[string]Section
 	env      *Env
 	section  *Section
+	lex      *Lexer
 }
 
-func NewEvaluator(prog *Program) Evaluator {
+func NewEvaluator(prog *Program, lex *Lexer) Evaluator {
 	env := Env{vars: make(map[string]Value)}
 	ev := Evaluator{
 		env:      &env,
 		sections: make(map[string]Section),
+		lex:      lex,
 	}
 
 	ev.setEnv("print", Value{Tag: ValNativeFn, NativeFn: nativePrint})
@@ -164,6 +166,12 @@ func (ev *Evaluator) find(name string) (*Value, bool) {
 		env = env.parent
 	}
 	return &Nil, false
+}
+
+func (ev *Evaluator) fmtError(node Node, format string, args ...interface{}) RuntimeError {
+	line, _ := ev.lex.GetLineAndCol(*node.Token())
+	msg := fmt.Sprintf(format, args...)
+	return RuntimeError{msg, line}
 }
 
 func (ev *Evaluator) ReadInput(input string) {
@@ -249,7 +257,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 	case *ExprIdentifier:
 		v, ok := ev.find(node.identifier)
 		if !ok {
-			panic(fmt.Sprintf("unknown variable %s", node.identifier))
+			panic(ev.fmtError(node, "unknown variable %s", node.identifier))
 		}
 		return *v
 	case *ExprFuncall:
@@ -267,7 +275,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 			return ev.fn(fnVal, args)
 		}
 
-		panic("attempted to call non function")
+		panic(ev.fmtError(node, "attempted to call non function"))
 	case *ExprFunc:
 		fnVal := Value{Tag: ValFn, Fn: node}
 		ev.setEnv(node.identifier, fnVal)
@@ -281,7 +289,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 		}
 		return Value{Tag: ValArray, Array: &items}
 	default:
-		panic(fmt.Sprintf("unhandled expression type %#v\n", node))
+		panic(ev.fmtError(node, "unhandled expression type %#v\n", node))
 	}
 }
 
@@ -303,7 +311,7 @@ func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
 	fn := fnVal.Fn
 
 	if len(fn.args) != len(args) {
-		panic(fmt.Errorf("arity mismatch: %s expects %d arguments", fn.identifier, len(fn.args)))
+		panic(ev.fmtError(fn, "arity mismatch: %s expects %d arguments", fn.identifier, len(fn.args)))
 	}
 
 	ev.pushEnv()
@@ -321,7 +329,7 @@ func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
 }
 
 func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
-	if expr.op == Equal {
+	if expr.op.Tag == Equal {
 		switch node := expr.lhs.(type) {
 		case *ExprIdentifier:
 			ident := node.identifier
@@ -329,56 +337,50 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 			ev.updateEnv(ident, val)
 			return val
 		case *ExprBinary:
-			if node.op != LSquare {
+			if node.op.Tag != LSquare {
 				break
 			}
 			array := ev.evalExpr(&node.lhs)
 			if array.Tag != ValArray {
-				panic(fmt.Errorf("%v is not subscriptable", array.Tag))
+				panic(ev.fmtError(node, "%v is not subscriptable", array.Tag))
 			}
 			index := ev.evalExpr(&node.rhs)
 			if index.Tag != ValNum {
-				panic("attempt to subscript with non-numeric value")
+				panic(ev.fmtError(node, "attempt to subscript with non-numeric value"))
 			}
 			val := ev.evalExpr(&expr.rhs)
 			(*array.Array)[*index.Num] = val
 			return val
 		}
-		panic("lhs of assignment is not assignable")
+		panic(ev.fmtError(expr, "lhs of assignment is not assignable"))
 	}
 
 	lhs := ev.evalExpr(&expr.lhs)
 	rhs := ev.evalExpr(&expr.rhs)
 
-	switch expr.op {
-	case Plus:
+	switch expr.op.Tag {
+	case Plus, Minus, Star, Slash:
 		if lhs.Tag != ValNum || rhs.Tag != ValNum {
-			panic("+ is only supported for numbers")
+			panic(ev.fmtError(expr, "operator only supported for numbers"))
 		}
-		result := *lhs.Num + *rhs.Num
-		return Value{Tag: ValNum, Num: &result}
-	case Minus:
-		if lhs.Tag != ValNum || rhs.Tag != ValNum {
-			panic("- is only supported for numbers")
+
+		var result int
+		switch expr.op.Tag {
+		case Plus:
+			result = *lhs.Num + *rhs.Num
+		case Minus:
+			result = *lhs.Num - *rhs.Num
+		case Star:
+			result = *lhs.Num * *rhs.Num
+		case Slash:
+			result = *lhs.Num / *rhs.Num
 		}
-		result := *lhs.Num - *rhs.Num
-		return Value{Tag: ValNum, Num: &result}
-	case Star:
-		if lhs.Tag != ValNum || rhs.Tag != ValNum {
-			panic("* is only supported for numbers")
-		}
-		result := *lhs.Num * *rhs.Num
-		return Value{Tag: ValNum, Num: &result}
-	case Slash:
-		if lhs.Tag != ValNum || rhs.Tag != ValNum {
-			panic("/ is only supported for numbers")
-		}
-		result := *lhs.Num / *rhs.Num
+
 		return Value{Tag: ValNum, Num: &result}
 	case EqualEqual:
 		result, err := lhs.Compare(rhs)
 		if err != nil {
-			panic(err)
+			panic(ev.fmtError(expr, err.Error()))
 		}
 		num := 0
 		if result {
@@ -389,7 +391,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		switch {
 		case lhs.Tag == ValNum && rhs.Tag == ValNum:
 			result := false
-			switch expr.op {
+			switch expr.op.Tag {
 			case Greater:
 				result = *lhs.Num > *rhs.Num
 			case GreaterEqual:
@@ -403,7 +405,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 			}
 			return Value{Tag: ValNum, Num: &num}
 		}
-		panic(fmt.Errorf("cannot compare %v and %v", lhs.Tag, rhs.Tag))
+		panic(ev.fmtError(expr, "cannot compare %v and %v", lhs.Tag, rhs.Tag))
 	case LSquare:
 		switch {
 		case lhs.Tag == ValArray && rhs.Tag == ValNum:
@@ -414,7 +416,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 		panic(fmt.Errorf("cannot subscript a %v with a %v", lhs.Tag, rhs.Tag))
 	default:
-		panic(fmt.Errorf("unknown operator %s", expr.op))
+		panic(ev.fmtError(expr, "unhandled expression type %#v", expr))
 	}
 }
 
@@ -494,7 +496,7 @@ MatchLoop:
 			ev.popEnv()
 			return
 		default:
-			panic(fmt.Errorf("unsupported match type %v", c.cond))
+			panic(ev.fmtError(c.cond, "unsupported match type %v", c.cond))
 		}
 	}
 }
@@ -502,7 +504,7 @@ MatchLoop:
 func (ev *Evaluator) forLoop(node *StmtFor) {
 	val := ev.evalExpr(&node.value)
 	if val.Tag != ValArray {
-		panic("expected an array in for loop")
+		panic(ev.fmtError(node, "only arrays can be used in for loops"))
 	}
 	ev.pushEnv()
 	for index, val := range *val.Array {

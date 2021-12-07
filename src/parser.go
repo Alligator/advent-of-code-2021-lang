@@ -31,9 +31,10 @@ func (p *Parser) atEnd() bool {
 	return p.token.Tag == EOF
 }
 
-func (p *Parser) fmtError(msg string) string {
-	line, col := p.lex.GetLineAndCol(p.token)
-	return fmt.Sprintf("parse error on line %d col %d: %s\n", line, col, msg)
+func (p *Parser) fmtError(msg string, args ...interface{}) ParseError {
+	line, _ := p.lex.GetLineAndCol(p.token)
+	formattedMsg := fmt.Sprintf(msg, args...)
+	return ParseError{formattedMsg, line}
 }
 
 func (p *Parser) advance() {
@@ -43,7 +44,7 @@ func (p *Parser) advance() {
 
 func (p *Parser) consume(expected TokenTag) {
 	if p.token.Tag != expected {
-		panic(p.fmtError(fmt.Sprintf("expected %s but saw %s", expected, p.token.Tag)))
+		panic(p.fmtError("expected %s but saw %s", expected, p.token.Tag))
 	}
 	p.advance()
 }
@@ -51,15 +52,16 @@ func (p *Parser) consume(expected TokenTag) {
 func (p *Parser) section() Section {
 	p.consume(Identifier)
 	ident := p.lex.GetString(p.prevToken)
+	identToken := &p.prevToken
 	p.consume(Colon)
 
 	if p.token.Tag == LCurly {
 		block := p.block()
-		return &SectionBlock{ident, block}
+		return &SectionBlock{ident, block, &p.token}
 	}
 
 	expr := p.expression()
-	return &SectionExpr{ident, expr}
+	return &SectionExpr{ident, expr, identToken}
 }
 
 func (p *Parser) block() []Stmt {
@@ -102,9 +104,10 @@ func (p *Parser) varDecl() Stmt {
 	p.consume(Var)
 	p.consume(Identifier)
 	ident := p.lex.GetString(p.prevToken)
+	identToken := &p.prevToken
 	p.consume(Equal)
 	expr := p.expression()
-	return &StmtVar{ident, expr}
+	return &StmtVar{ident, expr, identToken}
 }
 
 func (p *Parser) forLoop() Stmt {
@@ -162,9 +165,9 @@ func (p *Parser) expressionWithPrec(prec Precedence) Expr {
 	lhs := p.expressionWithPrec(prec + 1)
 
 	for {
-		op := p.token.Tag
+		op := p.token
 		opLevel := PrecNone
-		switch op {
+		switch op.Tag {
 		case Equal:
 			opLevel = PrecAssign
 		case EqualEqual, Greater, GreaterEqual, Less:
@@ -180,7 +183,7 @@ func (p *Parser) expressionWithPrec(prec Precedence) Expr {
 		if opLevel >= prec {
 			p.advance()
 			rhs := p.expressionWithPrec(prec + 1)
-			lhs = &ExprBinary{lhs, rhs, op}
+			lhs = &ExprBinary{lhs, rhs, &op}
 		} else {
 			return lhs
 		}
@@ -188,6 +191,7 @@ func (p *Parser) expressionWithPrec(prec Precedence) Expr {
 }
 
 func (p *Parser) unary() Expr {
+	identToken := p.token
 	lhs := p.primary()
 	switch p.token.Tag {
 	case LParen:
@@ -203,12 +207,13 @@ func (p *Parser) unary() Expr {
 			}
 		}
 		p.consume(RParen)
-		return &ExprFuncall{lhs, args}
+		return &ExprFuncall{lhs, args, &identToken}
 	case LSquare:
+		opToken := p.token
 		p.consume(LSquare)
 		index := p.expression()
 		p.consume(RSquare)
-		return &ExprBinary{lhs, index, LSquare}
+		return &ExprBinary{lhs, index, &opToken}
 	}
 	return lhs
 }
@@ -231,14 +236,14 @@ func (p *Parser) primary() Expr {
 	case Fn:
 		return p.fn()
 	default:
-		panic(p.fmtError(fmt.Sprintf("expected a value but found %s", p.token.Tag)))
+		panic(p.fmtError("expected a value but found %s", p.token.Tag))
 	}
 }
 
 func (p *Parser) string() Expr {
 	p.consume(Str)
 	s := p.lex.GetString(p.prevToken)
-	return &ExprString{s}
+	return &ExprString{s, &p.prevToken}
 }
 
 func (p *Parser) number() Expr {
@@ -248,17 +253,18 @@ func (p *Parser) number() Expr {
 	if err != nil {
 		panic(p.fmtError(err.Error()))
 	}
-	return &ExprNum{num}
+	return &ExprNum{num, &p.prevToken}
 }
 
 func (p *Parser) identifier() Expr {
 	p.consume(Identifier)
 	ident := p.lex.GetString(p.prevToken)
-	return &ExprIdentifier{ident}
+	return &ExprIdentifier{ident, &p.prevToken}
 }
 
 func (p *Parser) array() Expr {
 	p.consume(LSquare)
+	openingToken := &p.prevToken
 	items := make([]Expr, 0)
 	for p.token.Tag != RSquare {
 		items = append(items, p.expression())
@@ -267,7 +273,7 @@ func (p *Parser) array() Expr {
 		}
 	}
 	p.consume(RSquare)
-	return &ExprArray{items}
+	return &ExprArray{items, openingToken}
 }
 
 func (p *Parser) fn() Expr {

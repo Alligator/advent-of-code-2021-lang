@@ -1,0 +1,10 @@
+test: ''
+
+test_part1: 12
+
+part1: {
+  fn bla() {
+    return 12
+  }
+  return bla()
+}
