@@ -54,15 +54,21 @@ func main() {
 		lines := strings.Split(strings.TrimSpace(string(f)), "\n")
 		for {
 			t := l.NextToken()
-			tline, tcol := l.GetLineAndCol(t)
+			tline, _ := l.GetLineAndCol(t)
 			if tline != line {
 				line = tline
 				if line > 1 {
 					fmt.Print("\n\n")
 				}
-				fmt.Printf("%s\n", lines[line-1])
+				fmt.Printf("line %d: \"%s\"\n     %d: ", line, lines[line-1], line)
 			}
-			fmt.Printf("(%v %d %d) ", t.Tag, tline, tcol)
+
+			if t.Len == 0 {
+				fmt.Printf("%s ", t.Tag)
+			} else {
+				fmt.Printf("%s(%#v) ", t.Tag, l.GetString(t))
+			}
+
 			if t.Tag == lang.EOF {
 				break
 			}

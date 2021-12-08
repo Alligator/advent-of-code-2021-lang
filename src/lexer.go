@@ -8,48 +8,40 @@ import (
 
 type TokenTag uint8
 
+//go:generate stringer -type=TokenTag -linecomment
 const (
 	EOF TokenTag = iota
 	Identifier
-	Colon
 	Str
 	Num
-	LCurly
-	RCurly
-	LParen
-	RParen
-	Var
-	Equal
-	EqualEqual
-	Greater
-	GreaterEqual
-	For
-	In
-	Plus
-	If
-	Star
-	Return
-	Continue
-	Comma
-	Match
-	LSquare
-	RSquare
-	Minus
-	Slash
-	Else
-	Less
-	Break
-	Fn
+	Colon        // :
+	LCurly       // {
+	RCurly       // }
+	LParen       // (
+	RParen       // )
+	LSquare      // [
+	RSquare      // ]
+	Equal        // =
+	EqualEqual   // ==
+	Greater      // >
+	GreaterEqual // >=
+	Less         // <
+	Plus         // +
+	Star         // *
+	Comma        // ,
+	Minus        // -
+	Slash        // /
+	Var          // var
+	For          // for
+	In           // in
+	If           // if
+	Return       // return
+	Continue     // continue
+	Match        // match
+	Else         // else
+	Break        // break
+	Fn           // fn
 )
-
-func (t TokenTag) String() string {
-	return []string{
-		"EOF", "Identifier", "Colon", "Str", "Num", "LCurly", "RCurly", "LParen", "RParen", "Var",
-		"Equal", "EqualEqual", "Greater", "GreaterEqual", "For", "In", "Plus", "If", "Star", "Return",
-		"Continue", "Comma", "Match", "LSquare", "RSquare", "Minus", "Slash", "Else", "Less", "Break",
-		"Fn",
-	}[t]
-}
 
 type Token struct {
 	Tag TokenTag
