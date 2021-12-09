@@ -21,29 +21,30 @@ func _() {
 	_ = x[RSquare-10]
 	_ = x[Equal-11]
 	_ = x[EqualEqual-12]
-	_ = x[Greater-13]
-	_ = x[GreaterEqual-14]
-	_ = x[Less-15]
-	_ = x[Plus-16]
-	_ = x[Star-17]
-	_ = x[Comma-18]
-	_ = x[Minus-19]
-	_ = x[Slash-20]
-	_ = x[Var-21]
-	_ = x[For-22]
-	_ = x[In-23]
-	_ = x[If-24]
-	_ = x[Return-25]
-	_ = x[Continue-26]
-	_ = x[Match-27]
-	_ = x[Else-28]
-	_ = x[Break-29]
-	_ = x[Fn-30]
+	_ = x[BangEqual-13]
+	_ = x[Greater-14]
+	_ = x[GreaterEqual-15]
+	_ = x[Less-16]
+	_ = x[Plus-17]
+	_ = x[Star-18]
+	_ = x[Comma-19]
+	_ = x[Minus-20]
+	_ = x[Slash-21]
+	_ = x[Var-22]
+	_ = x[For-23]
+	_ = x[In-24]
+	_ = x[If-25]
+	_ = x[Return-26]
+	_ = x[Continue-27]
+	_ = x[Match-28]
+	_ = x[Else-29]
+	_ = x[Break-30]
+	_ = x[Fn-31]
 }
 
-const _TokenTag_name = "EOFIdentifierStrNum:{}()[]===>>=<+*,-/varforinifreturncontinuematchelsebreakfn"
+const _TokenTag_name = "EOFIdentifierStrNum:{}()[]===!=>>=<+*,-/varforinifreturncontinuematchelsebreakfn"
 
-var _TokenTag_index = [...]uint8{0, 3, 13, 16, 19, 20, 21, 22, 23, 24, 25, 26, 27, 29, 30, 32, 33, 34, 35, 36, 37, 38, 41, 44, 46, 48, 54, 62, 67, 71, 76, 78}
+var _TokenTag_index = [...]uint8{0, 3, 13, 16, 19, 20, 21, 22, 23, 24, 25, 26, 27, 29, 31, 32, 34, 35, 36, 37, 38, 39, 40, 43, 46, 48, 50, 56, 64, 69, 73, 78, 80}
 
 func (i TokenTag) String() string {
 	if i >= TokenTag(len(_TokenTag_index)-1) {

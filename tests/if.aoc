@@ -4,7 +4,7 @@ test_part1: 7
 test_part2: 14
 
 part1: {
-  if 1 == 2 {
+  if 1 != 1 {
     return 14
   } else if 2 == 1 {
     return 3

@@ -79,6 +79,19 @@ func (v Value) isTruthy() bool {
 	return false
 }
 
+func (v Value) negate() Value {
+	switch v.Tag {
+	case ValNum:
+		num := *v.Num
+		num = num - 1
+		if num < 0 {
+			num = -num
+		}
+		return Value{Tag: ValNum, Num: &num}
+	}
+	return Nil
+}
+
 func (v Value) CheckTagOrPanic(expectedTag ValueTag) {
 	if v.Tag != expectedTag {
 		panic(fmt.Errorf("expected a %s but found a %s", expectedTag.String(), v.Tag.String()))
@@ -383,7 +396,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 
 		return Value{Tag: ValNum, Num: &result}
-	case EqualEqual:
+	case EqualEqual, BangEqual:
 		result, err := lhs.Compare(rhs)
 		if err != nil {
 			panic(ev.fmtError(expr, err.Error()))
@@ -392,7 +405,11 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		if result {
 			num = 1
 		}
-		return Value{Tag: ValNum, Num: &num}
+		val := Value{Tag: ValNum, Num: &num}
+		if expr.op.Tag == BangEqual {
+			return val.negate()
+		}
+		return val
 	case Greater, GreaterEqual, Less:
 		switch {
 		case lhs.Tag == ValNum && rhs.Tag == ValNum:
@@ -422,7 +439,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 		panic(fmt.Errorf("cannot subscript a %v with a %v", lhs.Tag, rhs.Tag))
 	default:
-		panic(ev.fmtError(expr, "unhandled expression type %#v", expr))
+		panic(ev.fmtError(expr, "unknown operator %s", expr.op.Tag.String()))
 	}
 }
 

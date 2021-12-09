@@ -23,6 +23,7 @@ const (
 	RSquare      // ]
 	Equal        // =
 	EqualEqual   // ==
+	BangEqual    // !=
 	Greater      // >
 	GreaterEqual // >=
 	Less         // <
@@ -235,6 +236,11 @@ func (lex *Lexer) NextToken() Token {
 			return simpleToken(lex, EqualEqual)
 		}
 		return simpleToken(lex, Equal)
+	case '!':
+		if lex.peek() == '=' {
+			lex.advance()
+			return simpleToken(lex, BangEqual)
+		}
 	}
 	panic(lex.fmtError("unexpected character %q (%x)", r, r))
 }

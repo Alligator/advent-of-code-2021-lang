@@ -177,7 +177,7 @@ func (p *Parser) expressionWithPrec(prec Precedence) Expr {
 		switch op.Tag {
 		case Equal:
 			opLevel = PrecAssign
-		case EqualEqual, Greater, GreaterEqual, Less:
+		case EqualEqual, Greater, GreaterEqual, Less, BangEqual:
 			opLevel = PrecCompare
 		case Plus, Minus:
 			opLevel = PrecSum
