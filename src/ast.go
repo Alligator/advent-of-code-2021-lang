@@ -245,7 +245,7 @@ func (ap *AstPrinter) printStmt(stmt *Stmt) {
 		ap.printExpr(&node.expr)
 		ap.depth--
 	case *StmtBlock:
-		ap.printIndented("StmtBlockr")
+		ap.printIndented("StmtBlock")
 		ap.depth++
 		for _, stmt := range node.body {
 			ap.printStmt(&stmt)
@@ -271,6 +271,11 @@ func (ap *AstPrinter) printStmt(stmt *Stmt) {
 			ap.printStmt(&c.body)
 			ap.depth--
 		}
+		ap.depth--
+	case *StmtReturn:
+		ap.printIndented("StmtReturn")
+		ap.depth++
+		ap.printExpr(&node.value)
 		ap.depth--
 	default:
 		ap.printIndented("UNKNOWN", fmt.Sprintf("%#v", node))
@@ -306,7 +311,7 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 		}
 		ap.depth--
 	case *ExprFunc:
-		ap.printIndented("ExprFunc")
+		ap.printIndented("ExprFunc", node.identifier)
 		ap.depth++
 		for _, a := range node.args {
 			ap.printIndented("arg", a)
