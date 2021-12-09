@@ -81,3 +81,16 @@ func nativePush(args []Value) Value {
 	array = append(array, args[1])
 	return Value{Tag: ValArray, Array: &array}
 }
+
+func nativeDelete(args []Value) Value {
+	checkArgs(args, ValArray, ValNum)
+
+	newArray := make([]Value, 0)
+	for index, val := range *args[0].Array {
+		if index == *args[1].Num {
+			continue
+		}
+		newArray = append(newArray, val)
+	}
+	return Value{Tag: ValArray, Array: &newArray}
+}
