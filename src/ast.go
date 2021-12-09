@@ -42,7 +42,7 @@ type SectionExpr struct {
 
 type SectionBlock struct {
 	label        string
-	block        []Stmt
+	block        Stmt
 	openingToken *Token
 }
 
@@ -93,7 +93,7 @@ type ExprFuncall struct {
 type ExprFunc struct {
 	identifier      string
 	args            []string
-	body            []Stmt
+	body            Stmt
 	identifierToken *Token
 }
 
@@ -120,6 +120,11 @@ type StmtExpr struct {
 	expr Expr
 }
 
+type StmtBlock struct {
+	body         []Stmt
+	openingToken *Token
+}
+
 type StmtVar struct {
 	identifier      string
 	value           Expr
@@ -130,13 +135,13 @@ type StmtFor struct {
 	identifier      string
 	indexIdentifier string
 	value           Expr
-	body            []Stmt
+	body            Stmt
 }
 
 type StmtIf struct {
 	condition Expr
-	body      []Stmt
-	elseBody  []Stmt
+	body      Stmt
+	elseBody  Stmt
 }
 
 type StmtReturn struct {
@@ -150,7 +155,7 @@ type StmtMatch struct {
 
 type MatchCase struct {
 	cond Expr
-	body []Stmt
+	body Stmt
 }
 
 type StmtContinue struct {
@@ -162,6 +167,7 @@ type StmtBreak struct {
 }
 
 func (s *StmtExpr) Token() *Token     { return s.expr.Token() }
+func (s StmtBlock) Token() *Token     { return s.openingToken }
 func (s *StmtVar) Token() *Token      { return s.identifierToken }
 func (s *StmtFor) Token() *Token      { return s.value.Token() }
 func (s *StmtIf) Token() *Token       { return s.condition.Token() }
@@ -171,6 +177,7 @@ func (s *StmtContinue) Token() *Token { return s.token }
 func (s *StmtBreak) Token() *Token    { return s.token }
 
 func (*StmtExpr) stmtNode()     {}
+func (*StmtBlock) stmtNode()    {}
 func (*StmtVar) stmtNode()      {}
 func (*StmtFor) stmtNode()      {}
 func (*StmtIf) stmtNode()       {}
@@ -204,11 +211,7 @@ func (ap *AstPrinter) printSection(section *Section) {
 	case *SectionBlock:
 		ap.depth++
 		ap.printIndented("SectionBlock", node.label)
-		ap.depth++
-		for _, stmt := range node.block {
-			ap.printStmt(&stmt)
-		}
-		ap.depth--
+		ap.printStmt(&node.block)
 		ap.depth--
 	case *SectionExpr:
 		ap.depth++
@@ -234,24 +237,27 @@ func (ap *AstPrinter) printStmt(stmt *Stmt) {
 		ap.printIndented("StmtFor", node.identifier)
 		ap.depth++
 		ap.printExpr(&node.value)
-		for _, stmt := range node.body {
-			ap.printStmt(&stmt)
-		}
+		ap.printStmt(&node.body)
 		ap.depth--
 	case *StmtExpr:
 		ap.printIndented("StmtExpr")
 		ap.depth++
 		ap.printExpr(&node.expr)
 		ap.depth--
+	case *StmtBlock:
+		ap.printIndented("StmtBlockr")
+		ap.depth++
+		for _, stmt := range node.body {
+			ap.printStmt(&stmt)
+		}
+		ap.depth--
 	case *StmtIf:
 		ap.printIndented("StmtIf")
 		ap.depth++
 		ap.printExpr(&node.condition)
-		for _, stmt := range node.body {
-			ap.printStmt(&stmt)
-		}
-		for _, stmt := range node.elseBody {
-			ap.printStmt(&stmt)
+		ap.printStmt(&node.body)
+		if node.elseBody != nil {
+			ap.printStmt(&node.elseBody)
 		}
 		ap.depth--
 	case *StmtMatch:
@@ -262,9 +268,7 @@ func (ap *AstPrinter) printStmt(stmt *Stmt) {
 			ap.printIndented("MatchCase")
 			ap.depth++
 			ap.printExpr(&c.cond)
-			for _, s := range c.body {
-				ap.printStmt(&s)
-			}
+			ap.printStmt(&c.body)
 			ap.depth--
 		}
 		ap.depth--
@@ -307,9 +311,7 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 		for _, a := range node.args {
 			ap.printIndented("arg", a)
 		}
-		for _, s := range node.body {
-			ap.printStmt(&s)
-		}
+		ap.printStmt(&node.body)
 		ap.depth--
 	default:
 		ap.printIndented("UNKNOWN", fmt.Sprintf("%#v", node))

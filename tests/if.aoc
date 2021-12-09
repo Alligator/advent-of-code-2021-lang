@@ -6,6 +6,8 @@ test_part2: 14
 part1: {
   if 1 == 2 {
     return 14
+  } else if 2 == 1 {
+    return 3
   } else {
     return 7
   }

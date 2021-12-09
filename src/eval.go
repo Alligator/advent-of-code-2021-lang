@@ -240,12 +240,17 @@ func (ev *Evaluator) HasSection(name string) bool {
 	return present
 }
 
-func (ev *Evaluator) evalBlock(block []Stmt) {
-	ev.pushEnv()
-	for _, stmt := range block {
-		ev.evalStmt(&stmt)
+func (ev *Evaluator) evalBlock(block Stmt) {
+	switch b := block.(type) {
+	case *StmtBlock:
+		ev.pushEnv()
+		for _, stmt := range b.body {
+			ev.evalStmt(&stmt)
+		}
+		ev.popEnv()
+	default:
+		panic(ev.fmtError(block, "expected a block but found %v", b))
 	}
-	ev.popEnv()
 }
 
 func (ev *Evaluator) evalExpr(expr *Expr) Value {
@@ -320,7 +325,8 @@ func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
 		ev.setEnv(ident, args[index])
 	}
 
-	for _, stmt := range fn.body {
+	b := fn.body.(*StmtBlock)
+	for _, stmt := range b.body {
 		ev.evalStmt(&stmt)
 	}
 
@@ -434,8 +440,8 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 		val := ev.evalExpr(&node.condition)
 		if val.isTruthy() {
 			ev.evalBlock(node.body)
-		} else if len(node.elseBody) > 0 {
-			ev.evalBlock(node.elseBody)
+		} else if node.elseBody != nil {
+			ev.evalStmt(&node.elseBody)
 		}
 	case *StmtReturn:
 		val := ev.evalExpr(&node.value)
@@ -446,6 +452,8 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 		panic(*node) // control flow panic
 	case *StmtMatch:
 		ev.match(node)
+	case *StmtBlock:
+		ev.evalBlock(node)
 	default:
 		panic(fmt.Sprintf("unhandled statement type %#v\n", node))
 	}
@@ -490,7 +498,8 @@ MatchLoop:
 				ev.env.vars[k] = v
 			}
 
-			for _, stmt := range c.body {
+			b := c.body.(*StmtBlock)
+			for _, stmt := range b.body {
 				ev.evalStmt(&stmt)
 			}
 			ev.popEnv()
@@ -525,7 +534,8 @@ func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index int) (stop b
 		ev.setEnv(node.indexIdentifier, Value{Tag: ValNum, Num: &index})
 	}
 
-	for _, stmt := range node.body {
+	b := node.body.(*StmtBlock)
+	for _, stmt := range b.body {
 		ev.evalStmt(&stmt)
 	}
 

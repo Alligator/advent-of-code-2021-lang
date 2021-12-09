@@ -64,14 +64,15 @@ func (p *Parser) section() Section {
 	return &SectionExpr{ident, expr, identToken}
 }
 
-func (p *Parser) block() []Stmt {
+func (p *Parser) block() Stmt {
 	p.consume(LCurly)
+	openingToken := p.prevToken
 	stmts := make([]Stmt, 0)
 	for p.token.Tag != RCurly {
 		stmts = append(stmts, p.statement())
 	}
 	p.consume(RCurly)
-	return stmts
+	return &StmtBlock{stmts, &openingToken}
 }
 
 func (p *Parser) statement() Stmt {
@@ -94,6 +95,8 @@ func (p *Parser) statement() Stmt {
 		return &StmtBreak{}
 	case Match:
 		return p.matchStmt()
+	case LCurly:
+		return p.block()
 	default:
 		expr := p.expression()
 		return &StmtExpr{expr}
@@ -130,10 +133,14 @@ func (p *Parser) ifStmt() Stmt {
 	p.consume(If)
 	condition := p.expression()
 	body := p.block()
-	elseBody := make([]Stmt, 0)
+	var elseBody Stmt = nil
 	if p.token.Tag == Else {
 		p.consume(Else)
-		elseBody = p.block()
+		if p.token.Tag == If {
+			elseBody = p.ifStmt()
+		} else {
+			elseBody = p.block()
+		}
 	}
 	return &StmtIf{condition, body, elseBody}
 }
