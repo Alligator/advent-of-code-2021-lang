@@ -286,8 +286,11 @@ func (p *Parser) array() Expr {
 func (p *Parser) fn() Expr {
 	p.consume(Fn)
 
-	p.consume(Identifier)
-	ident := p.lex.GetString(p.prevToken)
+	ident := "<anonymous>"
+	if p.token.Tag == Identifier {
+		p.consume(Identifier)
+		ident = p.lex.GetString(p.prevToken)
+	}
 
 	p.consume(LParen)
 

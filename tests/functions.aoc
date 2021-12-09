@@ -3,8 +3,8 @@ test: ''
 test_part1: 12
 
 part1: {
-  fn bla() {
-    return 12
+  fn bla(f) {
+    return f()
   }
-  return bla()
+  return bla(fn() { return 12 })
 }
