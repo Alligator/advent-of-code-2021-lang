@@ -24,14 +24,14 @@ func nativePrint(args []Value) Value {
 		fmt.Print(arg.String() + " ")
 	}
 	fmt.Println()
-	return Nil
+	return NilValue
 }
 
 func nativeNum(args []Value) Value {
 	checkArgs(args, ValStr)
 	i, err := strconv.Atoi(*args[0].Str)
 	if err != nil {
-		return Nil
+		return NilValue
 	}
 	return Value{Tag: ValNum, Num: &i}
 }

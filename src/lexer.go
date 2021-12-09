@@ -42,6 +42,7 @@ const (
 	Else         // else
 	Break        // break
 	Fn           // fn
+	Nil          // nil
 )
 
 type Token struct {
@@ -155,6 +156,8 @@ func (lex *Lexer) identifier() Token {
 		return simpleToken(lex, Else)
 	case "fn":
 		return simpleToken(lex, Fn)
+	case "nil":
+		return simpleToken(lex, Nil)
 	default:
 		return stringToken(lex, Identifier, start)
 	}

@@ -231,6 +231,9 @@ func (p *Parser) primary() Expr {
 		return p.string()
 	case Num:
 		return p.number()
+	case Nil:
+		p.consume(Nil)
+		return &ExprNil{&p.prevToken}
 	case Identifier:
 		return p.identifier()
 	case LSquare:

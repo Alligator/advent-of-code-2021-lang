@@ -30,7 +30,7 @@ type Value struct {
 	Fn       *ExprFunc
 }
 
-var Nil = Value{Tag: ValNil}
+var NilValue = Value{Tag: ValNil}
 
 func (v Value) Repr() string {
 	switch v.Tag {
@@ -89,7 +89,7 @@ func (v Value) negate() Value {
 		}
 		return Value{Tag: ValNum, Num: &num}
 	}
-	return Nil
+	return NilValue
 }
 
 func (v Value) CheckTagOrPanic(expectedTag ValueTag) {
@@ -104,6 +104,10 @@ func (v Value) Compare(b Value) (bool, error) {
 		return *v.Num == *b.Num, nil
 	case v.Tag == ValStr && b.Tag == ValStr:
 		return *v.Str == *b.Str, nil
+	case v.Tag == ValNil && b.Tag == ValNil:
+		return true, nil
+	case v.Tag == ValNil && b.Tag != ValNil, v.Tag != ValNil && b.Tag == ValNil:
+		return false, nil
 	}
 	return false, fmt.Errorf("cannot compare %s and %s", v.Tag.String(), b.Tag.String())
 }
@@ -178,7 +182,7 @@ func (ev *Evaluator) find(name string) (*Value, bool) {
 		}
 		env = env.parent
 	}
-	return &Nil, false
+	return &NilValue, false
 }
 
 func (ev *Evaluator) fmtError(node Node, format string, args ...interface{}) RuntimeError {
@@ -208,7 +212,7 @@ func (ev *Evaluator) evalProgram(prog *Program) {
 }
 
 func (ev *Evaluator) EvalSection(name string) (retVal Value) {
-	retVal = Nil
+	retVal = NilValue
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -272,6 +276,8 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 		return Value{Tag: ValStr, Str: &node.str}
 	case *ExprNum:
 		return Value{Tag: ValNum, Num: &node.num}
+	case *ExprNil:
+		return NilValue
 	case *ExprIdentifier:
 		v, ok := ev.find(node.identifier)
 		if !ok {
@@ -312,7 +318,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 }
 
 func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
-	retVal = Nil
+	retVal = NilValue
 
 	defer func() {
 		if r := recover(); r != nil {

@@ -73,6 +73,10 @@ type ExprNum struct {
 	token *Token
 }
 
+type ExprNil struct {
+	token *Token
+}
+
 type ExprArray struct {
 	items        []Expr
 	openingToken *Token
@@ -100,6 +104,7 @@ type ExprFunc struct {
 func (e *ExprString) Token() *Token     { return e.token }
 func (e *ExprIdentifier) Token() *Token { return e.token }
 func (e *ExprNum) Token() *Token        { return e.token }
+func (e *ExprNil) Token() *Token        { return e.token }
 func (e *ExprArray) Token() *Token      { return e.openingToken }
 func (e *ExprBinary) Token() *Token     { return e.op }
 func (e *ExprFuncall) Token() *Token    { return e.identifierToken }
@@ -108,6 +113,7 @@ func (e *ExprFunc) Token() *Token       { return e.identifierToken }
 func (*ExprString) exprNode()     {}
 func (*ExprIdentifier) exprNode() {}
 func (*ExprNum) exprNode()        {}
+func (*ExprNil) exprNode()        {}
 func (*ExprArray) exprNode()      {}
 func (*ExprBinary) exprNode()     {}
 func (*ExprFuncall) exprNode()    {}
@@ -290,6 +296,8 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 		ap.printIndented("ExprIdentifier", node.identifier)
 	case *ExprNum:
 		ap.printIndented("ExprNum", node.num)
+	case *ExprNil:
+		ap.printIndented("ExprNil")
 	case *ExprBinary:
 		ap.printIndented("ExprBinary", node.op.Tag.String())
 		ap.depth++
