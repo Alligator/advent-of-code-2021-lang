@@ -94,3 +94,9 @@ func nativeDelete(args []Value) Value {
 	}
 	return Value{Tag: ValArray, Array: &newArray}
 }
+
+func nativeRange(args []Value) Value {
+	checkArgs(args, ValNum, ValNum)
+	r := Range{*args[0].Num, *args[1].Num}
+	return Value{Tag: ValRange, Range: &r}
+}

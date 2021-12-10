@@ -13,13 +13,14 @@ func _() {
 	_ = x[ValNum-2]
 	_ = x[ValArray-3]
 	_ = x[ValMap-4]
-	_ = x[ValNativeFn-5]
-	_ = x[ValFn-6]
+	_ = x[ValRange-5]
+	_ = x[ValNativeFn-6]
+	_ = x[ValFn-7]
 }
 
-const _ValueTag_name = "nilstringnumberarraymap<nativeFn><fn>"
+const _ValueTag_name = "nilstringnumberarraymaprange<nativeFn><fn>"
 
-var _ValueTag_index = [...]uint8{0, 3, 9, 15, 20, 23, 33, 37}
+var _ValueTag_index = [...]uint8{0, 3, 9, 15, 20, 23, 28, 38, 42}
 
 func (i ValueTag) String() string {
 	if i >= ValueTag(len(_ValueTag_index)-1) {

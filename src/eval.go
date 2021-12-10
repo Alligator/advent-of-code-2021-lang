@@ -15,6 +15,7 @@ const (
 	ValNum                      // number
 	ValArray                    // array
 	ValMap                      // map
+	ValRange                    // range
 	ValNativeFn                 // <nativeFn>
 	ValFn                       // <fn>
 )
@@ -25,11 +26,19 @@ type Value struct {
 	Num      *int
 	Array    *[]Value
 	Map      *map[string]Value
+	Range    *Range
 	NativeFn func([]Value) Value
 	Fn       *ExprFunc
 }
 
 var NilValue = Value{Tag: ValNil}
+var zero = 0
+var ZeroValue = Value{Tag: ValNum, Num: &zero}
+
+type Range struct {
+	current int
+	end     int
+}
 
 func (v Value) Repr() string {
 	switch v.Tag {
@@ -53,13 +62,19 @@ func (v Value) Repr() string {
 	case ValMap:
 		var sb strings.Builder
 		sb.WriteString("{")
+		empty := true
 		for k, v := range *v.Map {
 			sb.WriteString(k)
 			sb.WriteString(": ")
 			sb.WriteString(v.Repr())
 			sb.WriteString(", ")
+			empty = false
 		}
-		sb.WriteString("\b\b}") // backspace over the last comma
+		if empty {
+			sb.WriteString("}")
+		} else {
+			sb.WriteString("\b\b}") // backspace over the last comma
+		}
 		return sb.String()
 	default:
 		return fmt.Sprintf("<%s>\n", v.Tag.String())
@@ -197,6 +212,7 @@ func NewEvaluator(prog *Program, lex *Lexer) Evaluator {
 	ev.setEnv("len", Value{Tag: ValNativeFn, NativeFn: nativeLen})
 	ev.setEnv("push", Value{Tag: ValNativeFn, NativeFn: nativePush})
 	ev.setEnv("delete", Value{Tag: ValNativeFn, NativeFn: nativeDelete})
+	ev.setEnv("range", Value{Tag: ValNativeFn, NativeFn: nativeRange})
 
 	ev.evalProgram(prog)
 	return ev
@@ -429,6 +445,14 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 
 	switch expr.op.Tag {
 	case Plus, Minus, Star, Slash:
+		// coerce nils to 0
+		if lhs.Tag == ValNil {
+			lhs = ZeroValue
+		}
+		if rhs.Tag == ValNil {
+			rhs = ZeroValue
+		}
+
 		if lhs.Tag != ValNum || rhs.Tag != ValNum {
 			panic(ev.fmtError(expr, "operator only supported for numbers"))
 		}
@@ -603,26 +627,49 @@ MatchLoop:
 
 func (ev *Evaluator) forLoop(node *StmtFor) {
 	val := ev.evalExpr(&node.value)
-	if val.Tag != ValArray {
-		panic(ev.fmtError(node, "only arrays can be used in for loops"))
-	}
-	ev.pushEnv()
-	for index, val := range *val.Array {
-		stop := ev.runForLoopBody(node, val, index)
-		if stop {
-			break
+	switch val.Tag {
+	case ValArray:
+		ev.pushEnv()
+		for index, item := range *val.Array {
+			i := index
+			stop := ev.runForLoopBody(node, item, Value{Tag: ValNum, Num: &i})
+			if stop {
+				break
+			}
 		}
+		ev.popEnv()
+	case ValRange:
+		rng := val.Range
+		ev.pushEnv()
+		for rng.current < rng.end {
+			i := rng.current
+			stop := ev.runForLoopBody(node, Value{Tag: ValNum, Num: &i}, Value{Tag: ValNum, Num: &i})
+			if stop {
+				break
+			}
+			rng.current++
+		}
+		ev.popEnv()
+	case ValMap:
+		mp := val.Map
+		ev.pushEnv()
+		for key, val := range *mp {
+			s := key
+			ev.runForLoopBody(node, Value{Tag: ValStr, Str: &s}, val)
+		}
+		ev.popEnv()
+	default:
+		panic(ev.fmtError(node, "%s is not iterable", val.Tag.String()))
 	}
-	ev.popEnv()
 }
 
-func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index int) (stop bool) {
+func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index Value) (stop bool) {
 	stop = false
 	defer catchContinueOrBreak(ev, ev.env, &stop)
 
 	ev.setEnv(node.identifier, val)
 	if node.indexIdentifier != "" {
-		ev.setEnv(node.indexIdentifier, Value{Tag: ValNum, Num: &index})
+		ev.setEnv(node.indexIdentifier, index)
 	}
 
 	b := node.body.(*StmtBlock)
