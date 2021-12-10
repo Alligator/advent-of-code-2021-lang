@@ -19,9 +19,11 @@ syn keyword aocKw match
 
 syn keyword aocFn print
 syn keyword aocFn push
+syn keyword aocFn delete
 syn keyword aocFn len
 syn keyword aocFn split
 syn keyword aocFn read
+syn keyword aocFn num
 
 hi def link aocComment  Comment
 hi def link aocLabel    Label
