@@ -1,0 +1,8 @@
+test: 'abc'
+test_part1: 5
+
+part1: {
+  var map = { a: 1, b: 3, 0: 2 }
+  map['b'] = 2
+  return map['a'] + map['b'] + map[0]
+}

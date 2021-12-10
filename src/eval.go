@@ -8,17 +8,19 @@ import (
 
 type ValueTag uint8
 
+// TODO use stringer
 const (
 	ValNil ValueTag = iota
 	ValStr
 	ValNum
 	ValArray
+	ValMap
 	ValNativeFn
 	ValFn
 )
 
 func (t ValueTag) String() string {
-	return []string{"nil", "string", "num", "array", "nativeFn", "fn"}[t]
+	return []string{"nil", "string", "num", "array", "map", "nativeFn", "fn"}[t]
 }
 
 type Value struct {
@@ -26,6 +28,7 @@ type Value struct {
 	Str      *string
 	Num      *int
 	Array    *[]Value
+	Map      *map[string]Value
 	NativeFn func([]Value) Value
 	Fn       *ExprFunc
 }
@@ -51,8 +54,19 @@ func (v Value) Repr() string {
 		}
 		sb.WriteString("]")
 		return sb.String()
+	case ValMap:
+		var sb strings.Builder
+		sb.WriteString("{")
+		for k, v := range *v.Map {
+			sb.WriteString(k)
+			sb.WriteString(": ")
+			sb.WriteString(v.Repr())
+			sb.WriteString(", ")
+		}
+		sb.WriteString("\b\b}") // backspace over the last comma
+		return sb.String()
 	default:
-		return fmt.Sprintf("<unknown> %#v\n", v)
+		return fmt.Sprintf("<%s>\n", v.Tag.String())
 	}
 }
 
@@ -64,10 +78,8 @@ func (v Value) String() string {
 		return *v.Str
 	case ValNum:
 		return strconv.Itoa(*v.Num)
-	case ValArray:
-		return v.Repr()
 	default:
-		return fmt.Sprintf("<unknown> %#v\n", v)
+		return v.Repr()
 	}
 }
 
@@ -90,6 +102,56 @@ func (v Value) negate() Value {
 		return Value{Tag: ValNum, Num: &num}
 	}
 	return NilValue
+}
+
+func (v Value) getKey(key Value) (Value, bool) {
+tagSwitch:
+	switch v.Tag {
+	case ValArray:
+		if key.Tag == ValNum {
+			return (*v.Array)[*key.Num], true
+		}
+	case ValMap:
+		var keyStr string
+
+		switch key.Tag {
+		case ValNum:
+			keyStr = strconv.Itoa(*key.Num)
+		case ValStr:
+			keyStr = *key.Str
+		default:
+			break tagSwitch
+		}
+
+		return (*v.Map)[keyStr], true
+	}
+	return NilValue, false
+}
+
+func (v Value) setKey(key Value, val Value) bool {
+tagSwitch:
+	switch v.Tag {
+	case ValArray:
+		if key.Tag == ValNum {
+			(*v.Array)[*key.Num] = val
+			return true
+		}
+	case ValMap:
+		var keyStr string
+
+		switch key.Tag {
+		case ValNum:
+			keyStr = strconv.Itoa(*key.Num)
+		case ValStr:
+			keyStr = *key.Str
+		default:
+			break tagSwitch
+		}
+
+		(*v.Map)[keyStr] = val
+		return true
+	}
+	return false
 }
 
 func (v Value) CheckTagOrPanic(expectedTag ValueTag) {
@@ -313,6 +375,13 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 			items = append(items, ev.evalExpr(&itemExpr))
 		}
 		return Value{Tag: ValArray, Array: &items}
+	case *ExprMap:
+		items := make(map[string]Value)
+		for _, item := range node.items {
+			val := ev.evalExpr(&item.value)
+			items[item.key] = val
+		}
+		return Value{Tag: ValMap, Map: &items}
 	default:
 		panic(ev.fmtError(node, "unhandled expression type %#v\n", node))
 	}
@@ -356,29 +425,7 @@ func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
 
 func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 	if expr.op.Tag == Equal {
-		switch node := expr.lhs.(type) {
-		case *ExprIdentifier:
-			ident := node.identifier
-			val := ev.evalExpr(&expr.rhs)
-			ev.updateEnv(ident, val)
-			return val
-		case *ExprBinary:
-			if node.op.Tag != LSquare {
-				break
-			}
-			array := ev.evalExpr(&node.lhs)
-			if array.Tag != ValArray {
-				panic(ev.fmtError(node, "%v is not subscriptable", array.Tag))
-			}
-			index := ev.evalExpr(&node.rhs)
-			if index.Tag != ValNum {
-				panic(ev.fmtError(node, "attempt to subscript with non-numeric value"))
-			}
-			val := ev.evalExpr(&expr.rhs)
-			(*array.Array)[*index.Num] = val
-			return val
-		}
-		panic(ev.fmtError(expr, "lhs of assignment is not assignable"))
+		return ev.evalAssignment(expr)
 	}
 
 	lhs := ev.evalExpr(&expr.lhs)
@@ -437,17 +484,41 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 		panic(ev.fmtError(expr, "cannot compare %v and %v", lhs.Tag, rhs.Tag))
 	case LSquare:
-		switch {
-		case lhs.Tag == ValArray && rhs.Tag == ValNum:
-			return (*lhs.Array)[*rhs.Num]
-		case lhs.Tag == ValStr && rhs.Tag == ValNum:
-			b := string((*lhs.Str)[*rhs.Num])
-			return Value{Tag: ValStr, Str: &b}
+		val, ok := lhs.getKey(rhs)
+		if !ok {
+			panic(fmt.Errorf("cannot subscript a %v with a %v", lhs.Tag, rhs.Tag))
 		}
-		panic(fmt.Errorf("cannot subscript a %v with a %v", lhs.Tag, rhs.Tag))
+		return val
 	default:
 		panic(ev.fmtError(expr, "unknown operator %s", expr.op.Tag.String()))
 	}
+}
+
+func (ev *Evaluator) evalAssignment(expr *ExprBinary) Value {
+	switch node := expr.lhs.(type) {
+
+	case *ExprIdentifier:
+		ident := node.identifier
+		val := ev.evalExpr(&expr.rhs)
+		ev.updateEnv(ident, val)
+		return val
+
+	case *ExprBinary:
+		if node.op.Tag != LSquare {
+			break
+		}
+
+		lhs := ev.evalExpr(&node.lhs)
+		key := ev.evalExpr(&node.rhs)
+		val := ev.evalExpr(&expr.rhs)
+
+		ok := lhs.setKey(key, val)
+		if !ok {
+			panic(ev.fmtError(node, "%v is not subscriptable", lhs.Tag))
+		}
+		return val
+	}
+	panic(ev.fmtError(expr, "left hand side of assignment is not assignable"))
 }
 
 func (ev *Evaluator) evalStmt(stmt *Stmt) {

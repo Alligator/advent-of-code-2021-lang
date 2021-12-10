@@ -82,6 +82,16 @@ type ExprArray struct {
 	openingToken *Token
 }
 
+type ExprMap struct {
+	items        []ExprMapItem
+	openingtoken *Token
+}
+
+type ExprMapItem struct {
+	key   string
+	value Expr
+}
+
 type ExprBinary struct {
 	lhs Expr
 	rhs Expr
@@ -106,6 +116,7 @@ func (e *ExprIdentifier) Token() *Token { return e.token }
 func (e *ExprNum) Token() *Token        { return e.token }
 func (e *ExprNil) Token() *Token        { return e.token }
 func (e *ExprArray) Token() *Token      { return e.openingToken }
+func (e *ExprMap) Token() *Token        { return e.openingtoken }
 func (e *ExprBinary) Token() *Token     { return e.op }
 func (e *ExprFuncall) Token() *Token    { return e.identifierToken }
 func (e *ExprFunc) Token() *Token       { return e.identifierToken }
@@ -115,6 +126,7 @@ func (*ExprIdentifier) exprNode() {}
 func (*ExprNum) exprNode()        {}
 func (*ExprNil) exprNode()        {}
 func (*ExprArray) exprNode()      {}
+func (*ExprMap) exprNode()        {}
 func (*ExprBinary) exprNode()     {}
 func (*ExprFuncall) exprNode()    {}
 func (*ExprFunc) exprNode()       {}
@@ -316,6 +328,16 @@ func (ap *AstPrinter) printExpr(expr *Expr) {
 		ap.depth++
 		for _, v := range node.items {
 			ap.printExpr(&v)
+		}
+		ap.depth--
+	case *ExprMap:
+		ap.printIndented("Map")
+		ap.depth++
+		for _, v := range node.items {
+			ap.printIndented("item", v.key)
+			ap.depth++
+			ap.printExpr(&v.value)
+			ap.depth--
 		}
 		ap.depth--
 	case *ExprFunc:

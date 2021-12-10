@@ -3,6 +3,7 @@ package lang
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type Parser struct {
@@ -42,11 +43,23 @@ func (p *Parser) advance() {
 	p.token = p.lex.NextToken()
 }
 
-func (p *Parser) consume(expected TokenTag) {
-	if p.token.Tag != expected {
+func (p *Parser) consume(expected ...TokenTag) Token {
+	for _, tag := range expected {
+		if p.token.Tag == tag {
+			p.advance()
+			return p.prevToken
+		}
+	}
+
+	if len(expected) > 1 {
+		tags := make([]string, len(expected))
+		for index, tag := range expected {
+			tags[index] = tag.String()
+		}
+		panic(p.fmtError("expected one of %s but saw %s", strings.Join(tags, ", "), p.token.Tag))
+	} else {
 		panic(p.fmtError("expected %s but saw %s", expected, p.token.Tag))
 	}
-	p.advance()
 }
 
 func (p *Parser) section() Section {
@@ -238,6 +251,8 @@ func (p *Parser) primary() Expr {
 		return p.identifier()
 	case LSquare:
 		return p.array()
+	case LCurly:
+		return p.hashMap()
 	case LParen:
 		p.consume(LParen)
 		expr := p.expression()
@@ -284,6 +299,23 @@ func (p *Parser) array() Expr {
 	}
 	p.consume(RSquare)
 	return &ExprArray{items, openingToken}
+}
+
+func (p *Parser) hashMap() Expr {
+	openingToken := p.consume(LCurly)
+	items := make([]ExprMapItem, 0)
+	for p.token.Tag != RCurly {
+		ident := p.consume(Identifier, Num)
+		p.consume(Colon)
+		val := p.expression()
+		item := ExprMapItem{key: p.lex.GetString(ident), value: val}
+		items = append(items, item)
+		if p.token.Tag == Comma {
+			p.consume(Comma)
+		}
+	}
+	p.consume(RCurly)
+	return &ExprMap{items, &openingToken}
 }
 
 func (p *Parser) fn() Expr {
