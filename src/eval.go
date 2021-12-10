@@ -8,20 +8,16 @@ import (
 
 type ValueTag uint8
 
-// TODO use stringer
+//go:generate stringer -type=ValueTag -linecomment
 const (
-	ValNil ValueTag = iota
-	ValStr
-	ValNum
-	ValArray
-	ValMap
-	ValNativeFn
-	ValFn
+	ValNil      ValueTag = iota // nil
+	ValStr                      // string
+	ValNum                      // number
+	ValArray                    // array
+	ValMap                      // map
+	ValNativeFn                 // <nativeFn>
+	ValFn                       // <fn>
 )
-
-func (t ValueTag) String() string {
-	return []string{"nil", "string", "num", "array", "map", "nativeFn", "fn"}[t]
-}
 
 type Value struct {
 	Tag      ValueTag
