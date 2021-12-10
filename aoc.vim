@@ -8,12 +8,20 @@ syn region aocString  start="'" end="'"
 
 syn keyword aocKw fn
 syn keyword aocKw if
+syn keyword aocKw else
 syn keyword aocKw return
+syn keyword aocKw for
+syn keyword aocKw in
+syn keyword aocKw var
+syn keyword aocKw continue
+syn keyword aocKw break
+syn keyword aocKw match
 
 syn keyword aocFn print
 syn keyword aocFn push
 syn keyword aocFn len
 syn keyword aocFn split
+syn keyword aocFn read
 
 hi def link aocComment  Comment
 hi def link aocLabel    Label
