@@ -1,0 +1,11 @@
+test: ''
+test_part1: 1
+
+part1: {
+  if 1 + 2 != 3 { return 0 }
+  if 2 - 1 != 1 { return 0 }
+  if 2 * 3 != 6 { return 0 }
+  if 6 / 3 != 2 { return 0 }
+  if 3 % 2 != 1 { return 0 }
+  return 1
+}

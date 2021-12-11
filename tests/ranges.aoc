@@ -1,0 +1,37 @@
+test: ''
+
+test_part1: 1
+
+part1: {
+  # range
+  var sum = 0
+  for i in range(0, 11) {
+    sum = sum + i
+  }
+
+  if sum != 55 {
+    return 0
+  }
+
+  
+  # rangei
+  sum = 0
+  for i in rangei(0, 10) {
+    sum = sum + i
+  }
+
+  if sum != 55 {
+    return 0
+  }
+
+  # negative
+  sum = 55
+  for i in rangei(10, 0) {
+    sum = sum - i
+  }
+  if sum != 0 {
+    return 1
+  }
+
+  return 1
+}
