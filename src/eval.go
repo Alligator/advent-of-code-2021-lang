@@ -146,6 +146,11 @@ tagSwitch:
 		}
 
 		return (*v.Map)[keyStr], true
+	case ValStr:
+		if key.Tag == ValNum {
+			s := string((*v.Str)[*key.Num])
+			return Value{Tag: ValStr, Str: &s}, true
+		}
 	}
 	return NilValue, false
 }
