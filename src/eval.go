@@ -225,6 +225,7 @@ func NewEvaluator(prog *Program, lex *Lexer) Evaluator {
 	ev.setEnv("push", Value{Tag: ValNativeFn, NativeFn: nativePush})
 	ev.setEnv("delete", Value{Tag: ValNativeFn, NativeFn: nativeDelete})
 	ev.setEnv("range", Value{Tag: ValNativeFn, NativeFn: nativeRange})
+	ev.setEnv("rangei", Value{Tag: ValNativeFn, NativeFn: nativeRangeI})
 
 	ev.evalProgram(prog)
 	return ev

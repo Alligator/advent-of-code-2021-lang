@@ -111,3 +111,16 @@ func nativeRange(args []Value) Value {
 	r := Range{from, to, step}
 	return Value{Tag: ValRange, Range: &r}
 }
+
+func nativeRangeI(args []Value) Value {
+	checkArgs(args, ValNum, ValNum)
+	from := *args[0].Num
+	to := *args[1].Num
+	step := 1
+	if to < from {
+		step = -1
+	}
+	to += step
+	r := Range{from, to, step}
+	return Value{Tag: ValRange, Range: &r}
+}
