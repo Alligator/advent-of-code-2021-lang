@@ -217,6 +217,7 @@ func NewEvaluator(prog *Program, lex *Lexer) Evaluator {
 	}
 
 	ev.setEnv("print", Value{Tag: ValNativeFn, NativeFn: nativePrint})
+	ev.setEnv("println", Value{Tag: ValNativeFn, NativeFn: nativePrintLn})
 	ev.setEnv("num", Value{Tag: ValNativeFn, NativeFn: nativeNum})
 	ev.setEnv("read", Value{Tag: ValNativeFn, NativeFn: nativeRead})
 	ev.setEnv("split", Value{Tag: ValNativeFn, NativeFn: nativeSplit})

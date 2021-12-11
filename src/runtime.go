@@ -23,8 +23,13 @@ func nativePrint(args []Value) Value {
 	for _, arg := range args {
 		fmt.Print(arg.String() + " ")
 	}
-	fmt.Println()
 	return NilValue
+}
+
+func nativePrintLn(args []Value) Value {
+	v := nativePrint(args)
+	fmt.Println()
+	return v
 }
 
 func nativeNum(args []Value) Value {
