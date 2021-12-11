@@ -97,6 +97,12 @@ func nativeDelete(args []Value) Value {
 
 func nativeRange(args []Value) Value {
 	checkArgs(args, ValNum, ValNum)
-	r := Range{*args[0].Num, *args[1].Num}
+	from := *args[0].Num
+	to := *args[1].Num
+	step := 1
+	if to < from {
+		step = -1
+	}
+	r := Range{from, to, step}
 	return Value{Tag: ValRange, Range: &r}
 }

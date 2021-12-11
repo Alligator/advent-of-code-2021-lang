@@ -38,6 +38,17 @@ var ZeroValue = Value{Tag: ValNum, Num: &zero}
 type Range struct {
 	current int
 	end     int
+	step    int
+}
+
+func (r *Range) next() {
+	if !r.done() {
+		r.current += r.step
+	}
+}
+
+func (r *Range) done() bool {
+	return r.current == r.end
 }
 
 func (v Value) Repr() string {
@@ -641,13 +652,13 @@ func (ev *Evaluator) forLoop(node *StmtFor) {
 	case ValRange:
 		rng := val.Range
 		ev.pushEnv()
-		for rng.current < rng.end {
+		for !rng.done() {
 			i := rng.current
 			stop := ev.runForLoopBody(node, Value{Tag: ValNum, Num: &i}, Value{Tag: ValNum, Num: &i})
 			if stop {
 				break
 			}
-			rng.current++
+			rng.next()
 		}
 		ev.popEnv()
 	case ValMap:
