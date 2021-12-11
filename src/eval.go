@@ -293,7 +293,7 @@ func (ev *Evaluator) ReadInput(input string) {
 
 func (ev *Evaluator) evalProgram(prog *Program) {
 	// read all the sections
-	for _, section := range prog.sections {
+	for _, section := range prog.Sections {
 		name := section.getName()
 		ev.sections[name] = section
 	}
@@ -331,10 +331,10 @@ func (ev *Evaluator) EvalSection(name string) (retVal Value) {
 	switch node := section.(type) {
 	case *SectionBlock:
 		ev.section = &section
-		ev.evalBlock(node.block)
+		ev.evalBlock(node.Block)
 		ev.section = nil
 	case *SectionExpr:
-		return ev.evalExpr(&node.expression)
+		return ev.evalExpr(&node.Expression)
 	}
 
 	return retVal
@@ -349,7 +349,7 @@ func (ev *Evaluator) evalBlock(block Stmt) {
 	switch b := block.(type) {
 	case *StmtBlock:
 		ev.pushEnv()
-		for _, stmt := range b.body {
+		for _, stmt := range b.Body {
 			ev.evalStmt(&stmt)
 		}
 		ev.popEnv()
@@ -361,22 +361,22 @@ func (ev *Evaluator) evalBlock(block Stmt) {
 func (ev *Evaluator) evalExpr(expr *Expr) Value {
 	switch node := (*expr).(type) {
 	case *ExprString:
-		return Value{Tag: ValStr, Str: &node.str}
+		return Value{Tag: ValStr, Str: &node.Str}
 	case *ExprNum:
-		return Value{Tag: ValNum, Num: &node.num}
+		return Value{Tag: ValNum, Num: &node.Num}
 	case *ExprNil:
 		return NilValue
 	case *ExprIdentifier:
-		v, ok := ev.find(node.identifier)
+		v, ok := ev.find(node.Identifier)
 		if !ok {
-			panic(ev.fmtError(node, "unknown variable %s", node.identifier))
+			panic(ev.fmtError(node, "unknown variable %s", node.Identifier))
 		}
 		return *v
 	case *ExprFuncall:
-		fnVal := ev.evalExpr(&node.identifier)
+		fnVal := ev.evalExpr(&node.Identifier)
 
 		args := make([]Value, 0)
-		for _, arg := range node.args {
+		for _, arg := range node.Args {
 			args = append(args, ev.evalExpr(&arg))
 		}
 
@@ -390,21 +390,21 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 		panic(ev.fmtError(node, "attempted to call non function"))
 	case *ExprFunc:
 		fnVal := Value{Tag: ValFn, Fn: node}
-		ev.setEnv(node.identifier, fnVal)
+		ev.setEnv(node.Identifier, fnVal)
 		return fnVal
 	case *ExprBinary:
 		return ev.evalBinaryExpr(node)
 	case *ExprArray:
 		items := make([]Value, 0)
-		for _, itemExpr := range node.items {
+		for _, itemExpr := range node.Items {
 			items = append(items, ev.evalExpr(&itemExpr))
 		}
 		return Value{Tag: ValArray, Array: &items}
 	case *ExprMap:
 		items := make(map[string]Value)
-		for _, item := range node.items {
-			val := ev.evalExpr(&item.value)
-			items[item.key] = val
+		for _, item := range node.Items {
+			val := ev.evalExpr(&item.Value)
+			items[item.Key] = val
 		}
 		return Value{Tag: ValMap, Map: &items}
 	default:
@@ -429,18 +429,18 @@ func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
 
 	fn := fnVal.Fn
 
-	if len(fn.args) != len(args) {
-		panic(ev.fmtError(fn, "arity mismatch: %s expects %d arguments", fn.identifier, len(fn.args)))
+	if len(fn.Args) != len(args) {
+		panic(ev.fmtError(fn, "arity mismatch: %s expects %d arguments", fn.Identifier, len(fn.Args)))
 	}
 
 	ev.pushEnv()
 
-	for index, ident := range fn.args {
+	for index, ident := range fn.Args {
 		ev.setEnv(ident, args[index])
 	}
 
-	b := fn.body.(*StmtBlock)
-	for _, stmt := range b.body {
+	b := fn.Body.(*StmtBlock)
+	for _, stmt := range b.Body {
 		ev.evalStmt(&stmt)
 	}
 
@@ -453,8 +453,8 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		return ev.evalAssignment(expr)
 	}
 
-	lhs := ev.evalExpr(&expr.lhs)
-	rhs := ev.evalExpr(&expr.rhs)
+	lhs := ev.evalExpr(&expr.Lhs)
+	rhs := ev.evalExpr(&expr.Rhs)
 
 	switch expr.op.Tag {
 	case Plus, Minus, Star, Slash, Percent:
@@ -530,11 +530,11 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 }
 
 func (ev *Evaluator) evalAssignment(expr *ExprBinary) Value {
-	switch node := expr.lhs.(type) {
+	switch node := expr.Lhs.(type) {
 
 	case *ExprIdentifier:
-		ident := node.identifier
-		val := ev.evalExpr(&expr.rhs)
+		ident := node.Identifier
+		val := ev.evalExpr(&expr.Rhs)
 		ev.updateEnv(ident, val)
 		return val
 
@@ -543,9 +543,9 @@ func (ev *Evaluator) evalAssignment(expr *ExprBinary) Value {
 			break
 		}
 
-		lhs := ev.evalExpr(&node.lhs)
-		key := ev.evalExpr(&node.rhs)
-		val := ev.evalExpr(&expr.rhs)
+		lhs := ev.evalExpr(&node.Lhs)
+		key := ev.evalExpr(&node.Rhs)
+		val := ev.evalExpr(&expr.Rhs)
 
 		ok := lhs.setKey(key, val)
 		if !ok {
@@ -559,22 +559,22 @@ func (ev *Evaluator) evalAssignment(expr *ExprBinary) Value {
 func (ev *Evaluator) evalStmt(stmt *Stmt) {
 	switch node := (*stmt).(type) {
 	case *StmtVar:
-		ident := node.identifier
-		val := ev.evalExpr(&node.value)
+		ident := node.Identifier
+		val := ev.evalExpr(&node.Value)
 		ev.setEnv(ident, val)
 	case *StmtFor:
 		ev.forLoop(node)
 	case *StmtExpr:
-		ev.evalExpr(&node.expr)
+		ev.evalExpr(&node.Expr)
 	case *StmtIf:
-		val := ev.evalExpr(&node.condition)
+		val := ev.evalExpr(&node.Condition)
 		if val.isTruthy() {
-			ev.evalBlock(node.body)
-		} else if node.elseBody != nil {
-			ev.evalStmt(&node.elseBody)
+			ev.evalBlock(node.Body)
+		} else if node.ElseBody != nil {
+			ev.evalStmt(&node.ElseBody)
 		}
 	case *StmtReturn:
-		val := ev.evalExpr(&node.value)
+		val := ev.evalExpr(&node.Value)
 		panic(val) // control flow panic
 	case *StmtContinue:
 		panic(*node) // control flow panic
@@ -590,25 +590,25 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 }
 
 func (ev *Evaluator) match(match *StmtMatch) {
-	candidate := ev.evalExpr(&match.value)
+	candidate := ev.evalExpr(&match.Value)
 
 MatchLoop:
-	for _, c := range match.cases {
-		switch pattern := c.cond.(type) {
+	for _, c := range match.Cases {
+		switch pattern := c.Cond.(type) {
 		case *ExprArray:
 			if candidate.Tag != ValArray {
 				continue
 			}
 
 			vars := make(map[string]Value)
-			for index, item := range pattern.items {
+			for index, item := range pattern.Items {
 				if index >= len(*candidate.Array) {
 					continue MatchLoop
 				}
 
 				switch itemNode := item.(type) {
 				case *ExprIdentifier:
-					vars[itemNode.identifier] = (*candidate.Array)[index]
+					vars[itemNode.Identifier] = (*candidate.Array)[index]
 				default:
 					itemVal := ev.evalExpr(&item)
 					result, err := (*candidate.Array)[index].Compare(itemVal)
@@ -628,20 +628,20 @@ MatchLoop:
 				ev.env.vars[k] = v
 			}
 
-			b := c.body.(*StmtBlock)
-			for _, stmt := range b.body {
+			b := c.Body.(*StmtBlock)
+			for _, stmt := range b.Body {
 				ev.evalStmt(&stmt)
 			}
 			ev.popEnv()
 			return
 		default:
-			panic(ev.fmtError(c.cond, "unsupported match type %v", c.cond))
+			panic(ev.fmtError(c.Cond, "unsupported match type %v", c.Cond))
 		}
 	}
 }
 
 func (ev *Evaluator) forLoop(node *StmtFor) {
-	val := ev.evalExpr(&node.value)
+	val := ev.evalExpr(&node.Value)
 	switch val.Tag {
 	case ValArray:
 		ev.pushEnv()
@@ -682,13 +682,13 @@ func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index Value) (stop
 	stop = false
 	defer catchContinueOrBreak(ev, ev.env, &stop)
 
-	ev.setEnv(node.identifier, val)
-	if node.indexIdentifier != "" {
-		ev.setEnv(node.indexIdentifier, index)
+	ev.setEnv(node.Identifier, val)
+	if node.IndexIdentifier != "" {
+		ev.setEnv(node.IndexIdentifier, index)
 	}
 
 	b := node.body.(*StmtBlock)
-	for _, stmt := range b.body {
+	for _, stmt := range b.Body {
 		ev.evalStmt(&stmt)
 	}
 

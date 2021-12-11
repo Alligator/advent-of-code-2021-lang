@@ -1,6 +1,8 @@
 package lang
 
-import "fmt"
+import (
+	"go/ast"
+)
 
 // interfaces
 type (
@@ -26,31 +28,32 @@ type (
 // program
 //
 type Program struct {
-	sections []Section
+	Sections []Section
 }
 
-func (p *Program) Pos() int { return 0 }
+func (p *Program) Pos() int      { return 0 }
+func (p *Program) Token() *Token { return nil }
 
 //
 // sections
 //
 type SectionExpr struct {
-	label      string
-	expression Expr
+	Label      string
+	Expression Expr
 	labelToken *Token
 }
 
 type SectionBlock struct {
-	label        string
-	block        Stmt
+	Label        string
+	Block        Stmt
 	openingToken *Token
 }
 
 func (node *SectionExpr) Token() *Token  { return node.labelToken }
 func (node *SectionBlock) Token() *Token { return node.openingToken }
 
-func (node *SectionExpr) getName() string  { return node.label }
-func (node *SectionBlock) getName() string { return node.label }
+func (node *SectionExpr) getName() string  { return node.Label }
+func (node *SectionBlock) getName() string { return node.Label }
 
 func (*SectionExpr) sectionNode()  {}
 func (*SectionBlock) sectionNode() {}
@@ -59,17 +62,17 @@ func (*SectionBlock) sectionNode() {}
 // expressions
 //
 type ExprString struct {
-	str   string
+	Str   string
 	token *Token
 }
 
 type ExprIdentifier struct {
-	identifier string
+	Identifier string
 	token      *Token
 }
 
 type ExprNum struct {
-	num   int
+	Num   int
 	token *Token
 }
 
@@ -78,36 +81,36 @@ type ExprNil struct {
 }
 
 type ExprArray struct {
-	items        []Expr
+	Items        []Expr
 	openingToken *Token
 }
 
 type ExprMap struct {
-	items        []ExprMapItem
+	Items        []ExprMapItem
 	openingtoken *Token
 }
 
 type ExprMapItem struct {
-	key   string
-	value Expr
+	Key   string
+	Value Expr
 }
 
 type ExprBinary struct {
-	lhs Expr
-	rhs Expr
+	Lhs Expr
+	Rhs Expr
 	op  *Token
 }
 
 type ExprFuncall struct {
-	identifier      Expr
-	args            []Expr
+	Identifier      Expr
+	Args            []Expr
 	identifierToken *Token
 }
 
 type ExprFunc struct {
-	identifier      string
-	args            []string
-	body            Stmt
+	Identifier      string
+	Args            []string
+	Body            Stmt
 	identifierToken *Token
 }
 
@@ -135,45 +138,45 @@ func (*ExprFunc) exprNode()       {}
 // statements
 //
 type StmtExpr struct {
-	expr Expr
+	Expr Expr
 }
 
 type StmtBlock struct {
-	body         []Stmt
+	Body         []Stmt
 	openingToken *Token
 }
 
 type StmtVar struct {
-	identifier      string
-	value           Expr
+	Identifier      string
+	Value           Expr
 	identifierToken *Token
 }
 
 type StmtFor struct {
-	identifier      string
-	indexIdentifier string
-	value           Expr
+	Identifier      string
+	IndexIdentifier string
+	Value           Expr
 	body            Stmt
 }
 
 type StmtIf struct {
-	condition Expr
-	body      Stmt
-	elseBody  Stmt
+	Condition Expr
+	Body      Stmt
+	ElseBody  Stmt
 }
 
 type StmtReturn struct {
-	value Expr
+	Value Expr
 }
 
 type StmtMatch struct {
-	value Expr
-	cases []MatchCase
+	Value Expr
+	Cases []MatchCase
 }
 
 type MatchCase struct {
-	cond Expr
-	body Stmt
+	Cond Expr
+	Body Stmt
 }
 
 type StmtContinue struct {
@@ -184,13 +187,13 @@ type StmtBreak struct {
 	token *Token
 }
 
-func (s *StmtExpr) Token() *Token     { return s.expr.Token() }
+func (s *StmtExpr) Token() *Token     { return s.Expr.Token() }
 func (s StmtBlock) Token() *Token     { return s.openingToken }
 func (s *StmtVar) Token() *Token      { return s.identifierToken }
-func (s *StmtFor) Token() *Token      { return s.value.Token() }
-func (s *StmtIf) Token() *Token       { return s.condition.Token() }
-func (s *StmtReturn) Token() *Token   { return s.value.Token() }
-func (s *StmtMatch) Token() *Token    { return s.value.Token() }
+func (s *StmtFor) Token() *Token      { return s.Value.Token() }
+func (s *StmtIf) Token() *Token       { return s.Condition.Token() }
+func (s *StmtReturn) Token() *Token   { return s.Value.Token() }
+func (s *StmtMatch) Token() *Token    { return s.Value.Token() }
 func (s *StmtContinue) Token() *Token { return s.token }
 func (s *StmtBreak) Token() *Token    { return s.token }
 
@@ -204,156 +207,6 @@ func (*StmtMatch) stmtNode()    {}
 func (*StmtContinue) stmtNode() {}
 func (*StmtBreak) stmtNode()    {}
 
-type AstPrinter struct {
-	depth uint8
-}
-
-func (ap *AstPrinter) printIndented(strs ...interface{}) {
-	fmt.Printf("%*s", ap.depth*2, "")
-	fmt.Println(strs...)
-}
-
-func (ap *AstPrinter) printProgram(prog *Program) {
-	ap.printIndented("Program")
-	ap.depth++
-	for _, section := range prog.sections {
-		ap.printSection(&section)
-	}
-	ap.depth--
-}
-
-func (ap *AstPrinter) printSection(section *Section) {
-	ap.printIndented("Section")
-	ap.depth++
-	switch node := (*section).(type) {
-	case *SectionBlock:
-		ap.depth++
-		ap.printIndented("SectionBlock", node.label)
-		ap.printStmt(&node.block)
-		ap.depth--
-	case *SectionExpr:
-		ap.depth++
-		ap.printIndented("SectionExpr", node.label)
-		ap.depth++
-		ap.printExpr(&node.expression)
-		ap.depth--
-		ap.depth--
-	default:
-		ap.printIndented("UNKNOWN", fmt.Sprintf("%#v", node))
-	}
-	ap.depth--
-}
-
-func (ap *AstPrinter) printStmt(stmt *Stmt) {
-	switch node := (*stmt).(type) {
-	case *StmtVar:
-		ap.printIndented("StmtVar", node.identifier)
-		ap.depth++
-		ap.printExpr(&node.value)
-		ap.depth--
-	case *StmtFor:
-		ap.printIndented("StmtFor", node.identifier)
-		ap.depth++
-		ap.printExpr(&node.value)
-		ap.printStmt(&node.body)
-		ap.depth--
-	case *StmtExpr:
-		ap.printIndented("StmtExpr")
-		ap.depth++
-		ap.printExpr(&node.expr)
-		ap.depth--
-	case *StmtBlock:
-		ap.printIndented("StmtBlock")
-		ap.depth++
-		for _, stmt := range node.body {
-			ap.printStmt(&stmt)
-		}
-		ap.depth--
-	case *StmtIf:
-		ap.printIndented("StmtIf")
-		ap.depth++
-		ap.printExpr(&node.condition)
-		ap.printStmt(&node.body)
-		if node.elseBody != nil {
-			ap.printStmt(&node.elseBody)
-		}
-		ap.depth--
-	case *StmtMatch:
-		ap.printIndented("StmtMatch")
-		ap.depth++
-		ap.printExpr(&node.value)
-		for _, c := range node.cases {
-			ap.printIndented("MatchCase")
-			ap.depth++
-			ap.printExpr(&c.cond)
-			ap.printStmt(&c.body)
-			ap.depth--
-		}
-		ap.depth--
-	case *StmtReturn:
-		ap.printIndented("StmtReturn")
-		ap.depth++
-		ap.printExpr(&node.value)
-		ap.depth--
-	default:
-		ap.printIndented("UNKNOWN", fmt.Sprintf("%#v", node))
-	}
-}
-
-func (ap *AstPrinter) printExpr(expr *Expr) {
-	switch node := (*expr).(type) {
-	case *ExprString:
-		ap.printIndented("ExprString", "\""+node.str+"\"")
-	case *ExprIdentifier:
-		ap.printIndented("ExprIdentifier", node.identifier)
-	case *ExprNum:
-		ap.printIndented("ExprNum", node.num)
-	case *ExprNil:
-		ap.printIndented("ExprNil")
-	case *ExprBinary:
-		ap.printIndented("ExprBinary", node.op.Tag.String())
-		ap.depth++
-		ap.printExpr(&node.lhs)
-		ap.printExpr(&node.rhs)
-		ap.depth--
-	case *ExprFuncall:
-		ap.printIndented("ExprFuncall", node.identifier)
-		ap.depth++
-		for _, arg := range node.args {
-			ap.printExpr(&arg)
-		}
-		ap.depth--
-	case *ExprArray:
-		ap.printIndented("Array")
-		ap.depth++
-		for _, v := range node.items {
-			ap.printExpr(&v)
-		}
-		ap.depth--
-	case *ExprMap:
-		ap.printIndented("Map")
-		ap.depth++
-		for _, v := range node.items {
-			ap.printIndented("item", v.key)
-			ap.depth++
-			ap.printExpr(&v.value)
-			ap.depth--
-		}
-		ap.depth--
-	case *ExprFunc:
-		ap.printIndented("ExprFunc", node.identifier)
-		ap.depth++
-		for _, a := range node.args {
-			ap.printIndented("arg", a)
-		}
-		ap.printStmt(&node.body)
-		ap.depth--
-	default:
-		ap.printIndented("UNKNOWN", fmt.Sprintf("%#v", node))
-	}
-}
-
 func PrettyPrint(prog *Program) {
-	ap := AstPrinter{0}
-	ap.printProgram(prog)
+	ast.Print(nil, prog)
 }

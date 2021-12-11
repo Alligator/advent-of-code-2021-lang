@@ -308,7 +308,7 @@ func (p *Parser) hashMap() Expr {
 		ident := p.consume(Identifier, Num)
 		p.consume(Colon)
 		val := p.expression()
-		item := ExprMapItem{key: p.lex.GetString(ident), value: val}
+		item := ExprMapItem{Key: p.lex.GetString(ident), Value: val}
 		items = append(items, item)
 		if p.token.Tag == Comma {
 			p.consume(Comma)
@@ -342,9 +342,9 @@ func (p *Parser) fn() Expr {
 
 	body := p.block()
 	return &ExprFunc{
-		identifier: ident,
-		args:       args,
-		body:       body,
+		Identifier: ident,
+		Args:       args,
+		Body:       body,
 	}
 }
 
