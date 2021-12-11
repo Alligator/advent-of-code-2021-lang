@@ -1,42 +1,132 @@
 program
-  section
-  section section*
+    section*
 
 section
-  identifier ':' expression
-  identifier ':' block
-
-identifier
-  letter
-  letter alpha*
-
-alpha
-  letter
-  digit
-
-expression
-  string
-  identifier
+    IDENTIFIER ":" block
+    IDENTIFIER ":" expression
 
 block
-  '{' statement* '}'
+    "{" statement* "}"
 
 statement
-  funcall
+    varDecl
+    forLoop
+    ifStmt
+    returnStmt
+    continueStmt
+    breakStmt
+    matchStmt
+    block
+    expression
 
-funcall
-  identifier '()'
-  identifier '(' args ')'
+varDecl
+    "var" IDENTIFIER "=" expression
 
-args
-  expression
-  expression ',' args
+forLoop
+    "for" IDENTIFIER "in" expression block
+    "for" IDENTIFIER "," IDENTIFIER "in" expression block
 
-string
-  ''' anything '''
+ifStmt
+    "if" expression block
+    "if" expression block "else" block
+    "if" expression block "else" ifStmt
 
-letter
-  whatever IsLetter says
+returnStmt
+    "return" expression
 
-digit
-  whatever IsDigit says
+continueStmt 
+    "continue"
+
+breakStmt
+    "break"
+
+matchStmt
+    "match" expression "{" matchCase* "}"
+
+matchCase
+    expression ":" block
+
+expression
+    assignment
+
+assignment
+    comparison ( "=" assigment )*
+
+comparison
+    sum
+    sum "==" comparison
+    sum ">"  comparison
+    sum ">=" comparison
+    sum "<"  comparison
+    sum "!=" comparison
+
+sum
+    product
+    product "+" sum
+    product "-" sum
+
+product
+    unary
+    unary "*" product
+    unary "/" product
+    unary "%" product
+
+unary
+    primary
+    call
+    subscript
+
+primary
+    STRING
+    NUMBER
+    NIL
+    IDENTIFIER
+    hashMap
+    grouping
+    function
+
+call
+    primary "(" arguments ")"
+
+arguments
+    expression ( "," arguments )*
+
+subscript
+    primary "[" expression "]"
+
+hashMap
+    "{" hashMapItem* "}"
+
+hashMapItem
+    IDENTIFIER ":" expression ( "," hashmapItem )*
+
+grouping
+    "(" expression ")"
+
+function
+    "fn" IDENTIFIER "(" arguments ")" block
+
+STRING
+    "'" <anything except '> "'"
+
+NUMBER
+    DIGIT*
+    
+NIL
+    "nil"
+
+IDENTIFIER
+    ALPHA ALPHANUM*
+
+ALPHANUM
+    ALPHA
+    DIGIT
+
+DIGIT
+    "0" .. "9"
+
+ALPHA
+    "a" .. "z"
+    "A" .. "Z"
+    "_"
+
