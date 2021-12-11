@@ -62,7 +62,7 @@ func (p *Parser) consume(expected ...TokenTag) Token {
 	}
 }
 
-func (p *Parser) section() Section {
+func (p *Parser) section() Stmt {
 	p.consume(Identifier)
 	ident := p.lex.GetString(p.prevToken)
 	identToken := &p.prevToken
@@ -70,11 +70,12 @@ func (p *Parser) section() Section {
 
 	if p.token.Tag == LCurly {
 		block := p.block()
-		return &SectionBlock{ident, block, &p.token}
+		return &StmtSection{ident, block, &p.token}
 	}
 
 	expr := p.expression()
-	return &SectionExpr{ident, expr, identToken}
+	stmtExpr := StmtExpr{expr}
+	return &StmtSection{ident, &stmtExpr, identToken}
 }
 
 func (p *Parser) block() Stmt {
@@ -350,10 +351,19 @@ func (p *Parser) fn() Expr {
 
 func (p *Parser) Parse() Program {
 	p.advance()
-	sections := make([]Section, 0)
+	sections := make([]Stmt, 0)
 	for !p.atEnd() {
-		section := p.section()
-		sections = append(sections, section)
+		switch p.token.Tag {
+		case Identifier:
+			section := p.section()
+			sections = append(sections, section)
+		case Fn:
+			fn := p.fn()
+			sections = append(sections, &StmtExpr{fn})
+		default:
+			// let consume panic
+			p.consume(Identifier, Fn)
+		}
 	}
 	return Program{sections}
 }

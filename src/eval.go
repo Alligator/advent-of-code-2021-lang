@@ -202,9 +202,9 @@ type Env struct {
 }
 
 type Evaluator struct {
-	sections map[string]Section
+	sections map[string]*StmtSection
 	env      *Env
-	section  *Section
+	section  *StmtSection
 	lex      *Lexer
 }
 
@@ -212,7 +212,7 @@ func NewEvaluator(prog *Program, lex *Lexer) Evaluator {
 	env := Env{vars: make(map[string]Value)}
 	ev := Evaluator{
 		env:      &env,
-		sections: make(map[string]Section),
+		sections: make(map[string]*StmtSection),
 		lex:      lex,
 	}
 
@@ -293,9 +293,13 @@ func (ev *Evaluator) ReadInput(input string) {
 
 func (ev *Evaluator) evalProgram(prog *Program) {
 	// read all the sections
-	for _, section := range prog.Sections {
-		name := section.getName()
-		ev.sections[name] = section
+	for _, section := range prog.Stmts {
+		if stmt, ok := section.(*StmtSection); ok {
+			name := stmt.Label
+			ev.sections[name] = stmt
+		} else {
+			ev.evalStmt(&section)
+		}
 	}
 }
 
@@ -328,14 +332,10 @@ func (ev *Evaluator) EvalSection(name string) (retVal Value) {
 	if !preset {
 		panic(fmt.Errorf("couldn't find section %s", name))
 	}
-	switch node := section.(type) {
-	case *SectionBlock:
-		ev.section = &section
-		ev.evalBlock(node.Block)
-		ev.section = nil
-	case *SectionExpr:
-		return ev.evalExpr(&node.Expression)
-	}
+
+	ev.section = section
+	retVal = ev.evalStmt(&section.Body)
+	ev.section = nil
 
 	return retVal
 }
@@ -556,7 +556,7 @@ func (ev *Evaluator) evalAssignment(expr *ExprBinary) Value {
 	panic(ev.fmtError(expr, "left hand side of assignment is not assignable"))
 }
 
-func (ev *Evaluator) evalStmt(stmt *Stmt) {
+func (ev *Evaluator) evalStmt(stmt *Stmt) Value {
 	switch node := (*stmt).(type) {
 	case *StmtVar:
 		ident := node.Identifier
@@ -565,7 +565,7 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 	case *StmtFor:
 		ev.forLoop(node)
 	case *StmtExpr:
-		ev.evalExpr(&node.Expr)
+		return ev.evalExpr(&node.Expr)
 	case *StmtIf:
 		val := ev.evalExpr(&node.Condition)
 		if val.isTruthy() {
@@ -587,6 +587,7 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) {
 	default:
 		panic(fmt.Sprintf("unhandled statement type %#v\n", node))
 	}
+	return NilValue
 }
 
 func (ev *Evaluator) match(match *StmtMatch) {

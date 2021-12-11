@@ -1,10 +1,19 @@
 test: ''
 
 test_part1: 12
+test_part2: 456
+
+fn global_fn() {
+  return 456
+}
 
 part1: {
   fn bla(f) {
     return f()
   }
   return bla(fn() { return 12 })
+}
+
+part2: {
+  return global_fn()
 }

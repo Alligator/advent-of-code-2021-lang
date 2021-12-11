@@ -9,11 +9,6 @@ type (
 	Node interface {
 		Token() *Token
 	}
-	Section interface {
-		Node
-		getName() string
-		sectionNode() // type guard
-	}
 	Expr interface {
 		Node
 		exprNode() // type guard
@@ -28,35 +23,11 @@ type (
 // program
 //
 type Program struct {
-	Sections []Section
+	Stmts []Stmt // either StmtSection or StmtExpr -> ExprFunc
 }
 
 func (p *Program) Pos() int      { return 0 }
 func (p *Program) Token() *Token { return nil }
-
-//
-// sections
-//
-type SectionExpr struct {
-	Label      string
-	Expression Expr
-	labelToken *Token
-}
-
-type SectionBlock struct {
-	Label        string
-	Block        Stmt
-	openingToken *Token
-}
-
-func (node *SectionExpr) Token() *Token  { return node.labelToken }
-func (node *SectionBlock) Token() *Token { return node.openingToken }
-
-func (node *SectionExpr) getName() string  { return node.Label }
-func (node *SectionBlock) getName() string { return node.Label }
-
-func (*SectionExpr) sectionNode()  {}
-func (*SectionBlock) sectionNode() {}
 
 //
 // expressions
@@ -187,8 +158,14 @@ type StmtBreak struct {
 	token *Token
 }
 
+type StmtSection struct {
+	Label      string
+	Body       Stmt
+	labelToken *Token
+}
+
 func (s *StmtExpr) Token() *Token     { return s.Expr.Token() }
-func (s StmtBlock) Token() *Token     { return s.openingToken }
+func (s *StmtBlock) Token() *Token    { return s.openingToken }
 func (s *StmtVar) Token() *Token      { return s.identifierToken }
 func (s *StmtFor) Token() *Token      { return s.Value.Token() }
 func (s *StmtIf) Token() *Token       { return s.Condition.Token() }
@@ -196,6 +173,7 @@ func (s *StmtReturn) Token() *Token   { return s.Value.Token() }
 func (s *StmtMatch) Token() *Token    { return s.Value.Token() }
 func (s *StmtContinue) Token() *Token { return s.token }
 func (s *StmtBreak) Token() *Token    { return s.token }
+func (s *StmtSection) Token() *Token  { return s.labelToken }
 
 func (*StmtExpr) stmtNode()     {}
 func (*StmtBlock) stmtNode()    {}
@@ -206,6 +184,7 @@ func (*StmtReturn) stmtNode()   {}
 func (*StmtMatch) stmtNode()    {}
 func (*StmtContinue) stmtNode() {}
 func (*StmtBreak) stmtNode()    {}
+func (*StmtSection) stmtNode()  {}
 
 func PrettyPrint(prog *Program) {
 	ast.Print(nil, prog)
