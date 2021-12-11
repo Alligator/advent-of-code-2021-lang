@@ -457,7 +457,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 	rhs := ev.evalExpr(&expr.rhs)
 
 	switch expr.op.Tag {
-	case Plus, Minus, Star, Slash:
+	case Plus, Minus, Star, Slash, Percent:
 		// coerce nils to 0
 		if lhs.Tag == ValNil {
 			lhs = ZeroValue
@@ -480,6 +480,8 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 			result = *lhs.Num * *rhs.Num
 		case Slash:
 			result = *lhs.Num / *rhs.Num
+		case Percent:
+			result = *lhs.Num % *rhs.Num
 		}
 
 		return Value{Tag: ValNum, Num: &result}

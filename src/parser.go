@@ -58,7 +58,7 @@ func (p *Parser) consume(expected ...TokenTag) Token {
 		}
 		panic(p.fmtError("expected one of %s but saw %s", strings.Join(tags, ", "), p.token.Tag))
 	} else {
-		panic(p.fmtError("expected %s but saw %s", expected, p.token.Tag))
+		panic(p.fmtError("expected %s but saw %s", expected[0], p.token.Tag))
 	}
 }
 
@@ -194,7 +194,7 @@ func (p *Parser) expressionWithPrec(prec Precedence) Expr {
 			opLevel = PrecCompare
 		case Plus, Minus:
 			opLevel = PrecSum
-		case Star, Slash:
+		case Star, Slash, Percent:
 			opLevel = PrecProduct
 		default:
 			return lhs

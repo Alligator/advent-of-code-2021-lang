@@ -32,6 +32,7 @@ const (
 	Comma        // ,
 	Minus        // -
 	Slash        // /
+	Percent      // %
 	Var          // var
 	For          // for
 	In           // in
@@ -215,6 +216,8 @@ func (lex *Lexer) NextToken() Token {
 		return simpleToken(lex, Star)
 	case '+':
 		return simpleToken(lex, Plus)
+	case '%':
+		return simpleToken(lex, Percent)
 	case ',':
 		return simpleToken(lex, Comma)
 	case '[':
