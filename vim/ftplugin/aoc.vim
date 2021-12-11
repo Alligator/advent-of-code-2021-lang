@@ -6,3 +6,4 @@ endif
 let b:did_ftplugin = 1
 
 setl comments=:#
+setl commentstring=#\ %s
