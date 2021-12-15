@@ -126,12 +126,17 @@ func (v Value) negate() Value {
 	return NilValue
 }
 
-func (v Value) getKey(key Value) (Value, bool) {
+func (v Value) getKey(key Value) (Value, error) {
 tagSwitch:
 	switch v.Tag {
 	case ValArray:
 		if key.Tag == ValNum {
-			return (*v.Array)[*key.Num], true
+			index := *key.Num
+			array := *v.Array
+			if index >= len(array) {
+				return NilValue, fmt.Errorf("index %d out of range", index)
+			}
+			return (*v.Array)[*key.Num], nil
 		}
 	case ValMap:
 		var keyStr string
@@ -145,14 +150,19 @@ tagSwitch:
 			break tagSwitch
 		}
 
-		return (*v.Map)[keyStr], true
+		return (*v.Map)[keyStr], nil
 	case ValStr:
 		if key.Tag == ValNum {
+			index := *key.Num
+			str := *v.Str
+			if index >= len(str) {
+				return NilValue, fmt.Errorf("index %d out of range", index)
+			}
 			s := string((*v.Str)[*key.Num])
-			return Value{Tag: ValStr, Str: &s}, true
+			return Value{Tag: ValStr, Str: &s}, nil
 		}
 	}
-	return NilValue, false
+	return NilValue, fmt.Errorf("cannot subscript a %v with a %v", v.Tag, key.Tag)
 }
 
 func (v Value) setKey(key Value, val Value) bool {
@@ -524,9 +534,9 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 		panic(ev.fmtError(expr, "cannot compare %v and %v", lhs.Tag, rhs.Tag))
 	case LSquare:
-		val, ok := lhs.getKey(rhs)
-		if !ok {
-			panic(fmt.Errorf("cannot subscript a %v with a %v", lhs.Tag, rhs.Tag))
+		val, err := lhs.getKey(rhs)
+		if err != nil {
+			panic(ev.fmtError(expr, "%s", err))
 		}
 		return val
 	default:
