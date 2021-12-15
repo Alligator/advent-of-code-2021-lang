@@ -321,6 +321,7 @@ func (p *Parser) hashMap() Expr {
 
 func (p *Parser) fn() Expr {
 	p.consume(Fn)
+	openingToken := p.prevToken
 
 	ident := "<anonymous>"
 	if p.token.Tag == Identifier {
@@ -343,9 +344,10 @@ func (p *Parser) fn() Expr {
 
 	body := p.block()
 	return &ExprFunc{
-		Identifier: ident,
-		Args:       args,
-		Body:       body,
+		Identifier:   ident,
+		Args:         args,
+		Body:         body,
+		openingToken: &openingToken,
 	}
 }
 

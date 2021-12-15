@@ -79,10 +79,10 @@ type ExprFuncall struct {
 }
 
 type ExprFunc struct {
-	Identifier      string
-	Args            []string
-	Body            Stmt
-	identifierToken *Token
+	Identifier   string
+	Args         []string
+	Body         Stmt
+	openingToken *Token
 }
 
 func (e *ExprString) Token() *Token     { return e.token }
@@ -93,7 +93,7 @@ func (e *ExprArray) Token() *Token      { return e.openingToken }
 func (e *ExprMap) Token() *Token        { return e.openingtoken }
 func (e *ExprBinary) Token() *Token     { return e.op }
 func (e *ExprFuncall) Token() *Token    { return e.identifierToken }
-func (e *ExprFunc) Token() *Token       { return e.identifierToken }
+func (e *ExprFunc) Token() *Token       { return e.openingToken }
 
 func (*ExprString) exprNode()     {}
 func (*ExprIdentifier) exprNode() {}
