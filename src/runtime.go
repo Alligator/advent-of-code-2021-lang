@@ -3,6 +3,7 @@ package lang
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -34,7 +35,7 @@ func nativePrintLn(args []Value) Value {
 
 func nativeNum(args []Value) Value {
 	checkArgs(args, ValStr)
-	i, err := strconv.Atoi(*args[0].Str)
+	i, err := strconv.Atoi(strings.TrimSpace(*args[0].Str))
 	if err != nil {
 		return NilValue
 	}
@@ -123,4 +124,17 @@ func nativeRangeI(args []Value) Value {
 	to += step
 	r := Range{from, to, step}
 	return Value{Tag: ValRange, Range: &r}
+}
+
+func nativeSort(args []Value) Value {
+	checkArgs(args, ValArray)
+	arr := *args[0].Array
+	dest := make([]Value, len(arr))
+	copy(dest, arr)
+	sort.Slice(dest, func(a int, b int) bool {
+		valA := dest[a].Num
+		valB := dest[b].Num
+		return *valA < *valB
+	})
+	return Value{Tag: ValArray, Array: &dest}
 }
