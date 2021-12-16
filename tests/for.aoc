@@ -1,6 +1,7 @@
 test: ''
 
 test_part1: 15
+test_part2: 17
 
 part1: {
   var num = 0
@@ -9,4 +10,19 @@ part1: {
     num = num + item
   }
   return num
+}
+
+part2: {
+  var sum = 0
+  for i in rangei(1, 10) {
+    if i == 4 {
+      continue
+    }
+    if i > 6 {
+      break
+    }
+    sum = sum + i
+  }
+
+  return sum
 }

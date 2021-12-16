@@ -95,7 +95,10 @@ func main() {
 }
 
 func test(ev *lang.Evaluator) bool {
-	testInput := ev.EvalSection("test")
+	testInput, err := ev.EvalSection("test")
+	if err != nil {
+		panic(err)
+	}
 	testInput.CheckTagOrPanic(lang.ValStr)
 	ev.ReadInput(*testInput.Str)
 
@@ -110,7 +113,10 @@ func test(ev *lang.Evaluator) bool {
 }
 
 func testSection(ev *lang.Evaluator, expectedSection string, actualSection string) bool {
-	expected := ev.EvalSection(expectedSection)
+	expected, err := ev.EvalSection(expectedSection)
+	if err != nil {
+		panic(err)
+	}
 	actual := evalSection(ev, actualSection)
 
 	res, err := expected.Compare(actual)
@@ -128,7 +134,10 @@ func testSection(ev *lang.Evaluator, expectedSection string, actualSection strin
 }
 
 func run(ev *lang.Evaluator) {
-	f := ev.EvalSection("file")
+	f, err := ev.EvalSection("file")
+	if err != nil {
+		panic(err)
+	}
 	if f.Tag != lang.ValStr {
 		panic("file section must evaluate to a string")
 	}
@@ -143,7 +152,11 @@ func evalSection(ev *lang.Evaluator, name string) lang.Value {
 	if benchMode {
 		defer timeFunc(name)()
 	}
-	return ev.EvalSection(name)
+	v, err := ev.EvalSection(name)
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
 
 func timeFunc(name string) func() {

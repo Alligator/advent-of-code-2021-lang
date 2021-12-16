@@ -35,6 +35,17 @@ var NilValue = Value{Tag: ValNil}
 var zero = 0
 var ZeroValue = Value{Tag: ValNum, Num: &zero}
 
+// control flow errors
+type returnValue struct {
+	value Value
+}
+type breakError struct{}
+type continueError struct{}
+
+func (r returnValue) Error() string   { return "" }
+func (b breakError) Error() string    { return "" }
+func (c continueError) Error() string { return "" }
+
 type Range struct {
 	current int
 	end     int
@@ -306,39 +317,23 @@ func (ev *Evaluator) ReadInput(input string) {
 	ev.setEnv("lines", Value{Tag: ValArray, Array: &lines})
 }
 
-func (ev *Evaluator) evalProgram(prog *Program) {
+func (ev *Evaluator) evalProgram(prog *Program) error {
 	// read all the sections
 	for _, section := range prog.Stmts {
 		if stmt, ok := section.(*StmtSection); ok {
 			name := stmt.Label
 			ev.sections[name] = stmt
 		} else {
-			ev.evalStmt(&section)
-		}
-	}
-}
-
-func (ev *Evaluator) EvalSection(name string) (retVal Value) {
-	retVal = NilValue
-
-	defer func() {
-		if r := recover(); r != nil {
-			switch e := r.(type) {
-			case Value:
-				// unwind the stack
-				env := ev.env
-				for env.parent != nil {
-					env = env.parent
-				}
-				ev.env = env
-				ev.section = nil
-				retVal = e
-			default:
-				panic(r)
+			_, err := ev.evalStmt(&section)
+			if err != nil {
+				return err
 			}
 		}
-	}()
+	}
+	return nil
+}
 
+func (ev *Evaluator) EvalSection(name string) (Value, error) {
 	if ev.section != nil {
 		panic("cannot nest sections")
 	}
@@ -349,10 +344,17 @@ func (ev *Evaluator) EvalSection(name string) (retVal Value) {
 	}
 
 	ev.section = section
-	retVal = ev.evalStmt(&section.Body)
-	ev.section = nil
+	defer func() { ev.section = nil }()
 
-	return retVal
+	v, err := ev.evalStmt(&section.Body)
+	if r, ok := err.(returnValue); ok {
+		return r.value, nil
+	}
+	if err != nil {
+		return NilValue, err
+	}
+
+	return v, nil
 }
 
 func (ev *Evaluator) HasSection(name string) bool {
@@ -360,17 +362,21 @@ func (ev *Evaluator) HasSection(name string) bool {
 	return present
 }
 
-func (ev *Evaluator) evalBlock(block Stmt) {
+func (ev *Evaluator) evalBlock(block Stmt) error {
 	switch b := block.(type) {
 	case *StmtBlock:
 		ev.pushEnv()
 		for _, stmt := range b.Body {
-			ev.evalStmt(&stmt)
+			_, err := ev.evalStmt(&stmt)
+			if err != nil {
+				return err
+			}
 		}
 		ev.popEnv()
 	default:
 		panic(ev.fmtError(block, "expected a block but found %v", b))
 	}
+	return nil
 }
 
 func (ev *Evaluator) evalExpr(expr *Expr) Value {
@@ -399,7 +405,11 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 		case ValNativeFn:
 			return fnVal.NativeFn(args)
 		case ValFn:
-			return ev.fn(fnVal, args)
+			v, err := ev.fn(fnVal, args)
+			if err != nil {
+				panic(err) // FIXME
+			}
+			return v
 		}
 
 		panic(ev.fmtError(node, "attempted to call non function"))
@@ -427,21 +437,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 	}
 }
 
-func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
-	retVal = NilValue
-
-	defer func() {
-		if r := recover(); r != nil {
-			switch e := r.(type) {
-			case Value:
-				retVal = e
-				ev.popEnv()
-			default:
-				panic(r)
-			}
-		}
-	}()
-
+func (ev *Evaluator) fn(fnVal Value, args []Value) (Value, error) {
 	fn := fnVal.Fn
 
 	if len(fn.Args) != len(args) {
@@ -449,6 +445,7 @@ func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
 	}
 
 	ev.pushEnv()
+	defer func() { ev.popEnv() }()
 
 	for index, ident := range fn.Args {
 		ev.setEnv(ident, args[index])
@@ -456,11 +453,16 @@ func (ev *Evaluator) fn(fnVal Value, args []Value) (retVal Value) {
 
 	b := fn.Body.(*StmtBlock)
 	for _, stmt := range b.Body {
-		ev.evalStmt(&stmt)
+		_, err := ev.evalStmt(&stmt)
+		if r, ok := err.(returnValue); ok {
+			return r.value, nil
+		}
+		if err != nil {
+			return NilValue, err
+		}
 	}
 
-	ev.popEnv()
-	return retVal
+	return NilValue, nil
 }
 
 func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
@@ -571,41 +573,56 @@ func (ev *Evaluator) evalAssignment(expr *ExprBinary) Value {
 	panic(ev.fmtError(expr, "left hand side of assignment is not assignable"))
 }
 
-func (ev *Evaluator) evalStmt(stmt *Stmt) Value {
+func (ev *Evaluator) evalStmt(stmt *Stmt) (Value, error) {
 	switch node := (*stmt).(type) {
 	case *StmtVar:
 		ident := node.Identifier
 		val := ev.evalExpr(&node.Value)
 		ev.setEnv(ident, val)
 	case *StmtFor:
-		ev.forLoop(node)
+		err := ev.forLoop(node)
+		if err != nil {
+			return NilValue, err
+		}
 	case *StmtExpr:
-		return ev.evalExpr(&node.Expr)
+		return ev.evalExpr(&node.Expr), nil
 	case *StmtIf:
 		val := ev.evalExpr(&node.Condition)
 		if val.isTruthy() {
-			ev.evalBlock(node.Body)
+			err := ev.evalBlock(node.Body)
+			if err != nil {
+				return NilValue, err
+			}
 		} else if node.ElseBody != nil {
-			ev.evalStmt(&node.ElseBody)
+			_, err := ev.evalStmt(&node.ElseBody)
+			if err != nil {
+				return NilValue, err
+			}
 		}
 	case *StmtReturn:
 		val := ev.evalExpr(&node.Value)
-		panic(val) // control flow panic
+		return NilValue, returnValue{val}
 	case *StmtContinue:
-		panic(*node) // control flow panic
+		return NilValue, continueError{}
 	case *StmtBreak:
-		panic(*node) // control flow panic
+		return NilValue, breakError{}
 	case *StmtMatch:
-		ev.match(node)
+		err := ev.match(node)
+		if err != nil {
+			return NilValue, err
+		}
 	case *StmtBlock:
-		ev.evalBlock(node)
+		err := ev.evalBlock(node)
+		if err != nil {
+			return NilValue, err
+		}
 	default:
 		panic(fmt.Sprintf("unhandled statement type %#v\n", node))
 	}
-	return NilValue
+	return NilValue, nil
 }
 
-func (ev *Evaluator) match(match *StmtMatch) {
+func (ev *Evaluator) match(match *StmtMatch) error {
 	candidate := ev.evalExpr(&match.Value)
 
 MatchLoop:
@@ -646,24 +663,31 @@ MatchLoop:
 
 			b := c.Body.(*StmtBlock)
 			for _, stmt := range b.Body {
-				ev.evalStmt(&stmt)
+				_, err := ev.evalStmt(&stmt)
+				if err != nil {
+					return err
+				}
 			}
 			ev.popEnv()
-			return
+			return nil
 		default:
 			panic(ev.fmtError(c.Cond, "unsupported match type %v", c.Cond))
 		}
 	}
+	return nil
 }
 
-func (ev *Evaluator) forLoop(node *StmtFor) {
+func (ev *Evaluator) forLoop(node *StmtFor) error {
 	val := ev.evalExpr(&node.Value)
 	switch val.Tag {
 	case ValArray:
 		ev.pushEnv()
 		for index, item := range *val.Array {
 			i := index
-			stop := ev.runForLoopBody(node, item, Value{Tag: ValNum, Num: &i})
+			stop, err := ev.runForLoopBody(node, item, Value{Tag: ValNum, Num: &i})
+			if err != nil {
+				return err
+			}
 			if stop {
 				break
 			}
@@ -674,7 +698,10 @@ func (ev *Evaluator) forLoop(node *StmtFor) {
 		ev.pushEnv()
 		for !rng.done() {
 			i := rng.current
-			stop := ev.runForLoopBody(node, Value{Tag: ValNum, Num: &i}, Value{Tag: ValNum, Num: &i})
+			stop, err := ev.runForLoopBody(node, Value{Tag: ValNum, Num: &i}, Value{Tag: ValNum, Num: &i})
+			if err != nil {
+				return err
+			}
 			if stop {
 				break
 			}
@@ -692,12 +719,10 @@ func (ev *Evaluator) forLoop(node *StmtFor) {
 	default:
 		panic(ev.fmtError(node, "%s is not iterable", val.Tag.String()))
 	}
+	return nil
 }
 
-func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index Value) (stop bool) {
-	stop = false
-	defer catchContinueOrBreak(ev, ev.env, &stop)
-
+func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index Value) (bool, error) {
 	ev.setEnv(node.Identifier, val)
 	if node.IndexIdentifier != "" {
 		ev.setEnv(node.IndexIdentifier, index)
@@ -705,25 +730,18 @@ func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index Value) (stop
 
 	b := node.body.(*StmtBlock)
 	for _, stmt := range b.Body {
-		ev.evalStmt(&stmt)
-	}
-
-	return stop
-}
-
-func catchContinueOrBreak(ev *Evaluator, rootEnv *Env, stop *bool) {
-	if r := recover(); r != nil {
-		switch r.(type) {
-		case StmtContinue:
-			ev.env = rootEnv
-			*stop = false
-			return
-		case StmtBreak:
-			ev.env = rootEnv
-			*stop = true
-			return
-		default:
-			panic(r)
+		_, err := ev.evalStmt(&stmt)
+		if err != nil {
+			switch err.(type) {
+			case breakError:
+				return true, nil
+			case continueError:
+				return false, nil
+			default:
+				return true, err
+			}
 		}
 	}
+
+	return false, nil
 }
