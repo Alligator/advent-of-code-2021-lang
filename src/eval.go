@@ -404,6 +404,17 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 
 		switch fnVal.Tag {
 		case ValNativeFn:
+			defer func() {
+				if r := recover(); r != nil {
+					if e, ok := r.(RuntimeError); ok {
+						// patch the line number, native functions don't know it
+						line, _ := ev.lex.GetLineAndCol(*node.identifierToken)
+						e.Line = line
+						panic(e)
+					}
+					panic(r)
+				}
+			}()
 			return fnVal.NativeFn(args)
 		case ValFn:
 			v, err := ev.fn(fnVal, args)

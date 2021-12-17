@@ -10,12 +10,13 @@ import (
 
 func checkArgs(args []Value, tags ...ValueTag) {
 	if len(args) != len(tags) {
-		panic("arg count mismatch")
+		panic(RuntimeError{"arity mismatch", 0})
 	}
 
 	for index, tag := range tags {
 		if args[index].Tag != tag {
-			panic(fmt.Errorf("arg type mismatch: expected %s got %s", tag.String(), args[index].Tag.String()))
+			msg := fmt.Sprintf("arg type mismatch: expected %s got %s", tag.String(), args[index].Tag.String())
+			panic(RuntimeError{msg, 0})
 		}
 	}
 }
