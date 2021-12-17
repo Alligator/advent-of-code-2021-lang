@@ -133,9 +133,19 @@ func nativeSort(args []Value) Value {
 	dest := make([]Value, len(arr))
 	copy(dest, arr)
 	sort.Slice(dest, func(a int, b int) bool {
-		valA := dest[a].Num
-		valB := dest[b].Num
-		return *valA < *valB
+		if dest[a].Tag == ValNum {
+			valA := dest[a].Num
+			valB := dest[b].Num
+			return *valA < *valB
+		}
+
+		if dest[a].Tag == ValStr {
+			valA := dest[a].Str
+			valB := dest[b].Str
+			return *valA < *valB
+		}
+
+		return false
 	})
 	return Value{Tag: ValArray, Array: &dest}
 }
