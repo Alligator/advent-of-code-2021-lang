@@ -478,14 +478,14 @@ func (ev *Evaluator) fn(fnVal Value, args []Value) (Value, error) {
 }
 
 func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
-	if expr.op.Tag == Equal {
+	if expr.Op.Tag == Equal {
 		return ev.evalAssignment(expr)
 	}
 
 	lhs := ev.evalExpr(&expr.Lhs)
 	rhs := ev.evalExpr(&expr.Rhs)
 
-	switch expr.op.Tag {
+	switch expr.Op.Tag {
 	case Plus, Minus, Star, Slash, Percent:
 		// coerce nils to 0
 		if lhs.Tag == ValNil {
@@ -500,7 +500,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 
 		var result int
-		switch expr.op.Tag {
+		switch expr.Op.Tag {
 		case Plus:
 			result = *lhs.Num + *rhs.Num
 		case Minus:
@@ -524,7 +524,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 			num = 1
 		}
 		val := Value{Tag: ValNum, Num: &num}
-		if expr.op.Tag == BangEqual {
+		if expr.Op.Tag == BangEqual {
 			return val.negate()
 		}
 		return val
@@ -532,7 +532,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		switch {
 		case lhs.Tag == ValNum && rhs.Tag == ValNum:
 			result := false
-			switch expr.op.Tag {
+			switch expr.Op.Tag {
 			case Greater:
 				result = *lhs.Num > *rhs.Num
 			case GreaterEqual:
@@ -547,6 +547,28 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 			return Value{Tag: ValNum, Num: &num}
 		}
 		panic(ev.fmtError(expr, "cannot compare %v and %v", lhs.Tag, rhs.Tag))
+	case AmpAmp:
+		// coerce nils to 0
+		if lhs.Tag == ValNil {
+			lhs = ZeroValue
+		}
+		if rhs.Tag == ValNil {
+			rhs = ZeroValue
+		}
+
+		if lhs.Tag != ValNum || rhs.Tag != ValNum {
+			panic(ev.fmtError(expr, "operator only supported for numbers"))
+		}
+
+		lhs_truthy := lhs.isTruthy()
+		rhs_truthy := rhs.isTruthy()
+		result := lhs_truthy && rhs_truthy
+		num_result := 0
+		if result {
+			num_result = 1
+		}
+
+		return Value{Tag: ValNum, Num: &num_result}
 	case LSquare:
 		val, err := lhs.getKey(rhs)
 		if err != nil {
@@ -554,7 +576,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 		return val
 	default:
-		panic(ev.fmtError(expr, "unknown operator %s", expr.op.Tag.String()))
+		panic(ev.fmtError(expr, "unknown operator %s", expr.Op.Tag.String()))
 	}
 }
 
@@ -568,7 +590,7 @@ func (ev *Evaluator) evalAssignment(expr *ExprBinary) Value {
 		return val
 
 	case *ExprBinary:
-		if node.op.Tag != LSquare {
+		if node.Op.Tag != LSquare {
 			break
 		}
 

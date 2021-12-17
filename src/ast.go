@@ -69,7 +69,7 @@ type ExprMapItem struct {
 type ExprBinary struct {
 	Lhs Expr
 	Rhs Expr
-	op  *Token
+	Op  *Token
 }
 
 type ExprFuncall struct {
@@ -91,7 +91,7 @@ func (e *ExprNum) Token() *Token        { return e.token }
 func (e *ExprNil) Token() *Token        { return e.token }
 func (e *ExprArray) Token() *Token      { return e.openingToken }
 func (e *ExprMap) Token() *Token        { return e.openingtoken }
-func (e *ExprBinary) Token() *Token     { return e.op }
+func (e *ExprBinary) Token() *Token     { return e.Op }
 func (e *ExprFuncall) Token() *Token    { return e.identifierToken }
 func (e *ExprFunc) Token() *Token       { return e.openingToken }
 

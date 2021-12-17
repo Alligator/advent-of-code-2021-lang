@@ -33,6 +33,7 @@ const (
 	Minus        // -
 	Slash        // /
 	Percent      // %
+	AmpAmp       // &&
 	Var          // var
 	For          // for
 	In           // in
@@ -246,6 +247,11 @@ func (lex *Lexer) NextToken() Token {
 		if lex.peek() == '=' {
 			lex.advance()
 			return simpleToken(lex, BangEqual)
+		}
+	case '&':
+		if lex.peek() == '&' {
+			lex.advance()
+			return simpleToken(lex, AmpAmp)
 		}
 	}
 	panic(lex.fmtError("unexpected character %q (%x)", r, r))

@@ -17,6 +17,7 @@ type Precedence uint8
 const (
 	PrecNone Precedence = iota
 	PrecAssign
+	PrecLogical
 	PrecCompare
 	PrecSum
 	PrecProduct
@@ -191,6 +192,8 @@ func (p *Parser) expressionWithPrec(prec Precedence) Expr {
 		switch op.Tag {
 		case Equal:
 			opLevel = PrecAssign
+		case AmpAmp:
+			opLevel = PrecLogical
 		case EqualEqual, Greater, GreaterEqual, Less, BangEqual:
 			opLevel = PrecCompare
 		case Plus, Minus:
