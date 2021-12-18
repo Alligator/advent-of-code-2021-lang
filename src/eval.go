@@ -408,7 +408,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 				if r := recover(); r != nil {
 					if e, ok := r.(RuntimeError); ok {
 						// patch the line number, native functions don't know it
-						line, _ := ev.lex.GetLineAndCol(*node.identifierToken)
+						line, _ := ev.lex.GetLineAndCol(node.identifierToken)
 						e.Line = line
 						panic(e)
 					}

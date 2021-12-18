@@ -34,31 +34,31 @@ func (p *Program) Token() *Token { return nil }
 //
 type ExprString struct {
 	Str   string
-	token *Token
+	token Token
 }
 
 type ExprIdentifier struct {
 	Identifier string
-	token      *Token
+	token      Token
 }
 
 type ExprNum struct {
 	Num   int
-	token *Token
+	token Token
 }
 
 type ExprNil struct {
-	token *Token
+	token Token
 }
 
 type ExprArray struct {
 	Items        []Expr
-	openingToken *Token
+	openingToken Token
 }
 
 type ExprMap struct {
 	Items        []ExprMapItem
-	openingtoken *Token
+	openingtoken Token
 }
 
 type ExprMapItem struct {
@@ -69,31 +69,31 @@ type ExprMapItem struct {
 type ExprBinary struct {
 	Lhs Expr
 	Rhs Expr
-	Op  *Token
+	Op  Token
 }
 
 type ExprFuncall struct {
 	Identifier      Expr
 	Args            []Expr
-	identifierToken *Token
+	identifierToken Token
 }
 
 type ExprFunc struct {
 	Identifier   string
 	Args         []string
 	Body         Stmt
-	openingToken *Token
+	openingToken Token
 }
 
-func (e *ExprString) Token() *Token     { return e.token }
-func (e *ExprIdentifier) Token() *Token { return e.token }
-func (e *ExprNum) Token() *Token        { return e.token }
-func (e *ExprNil) Token() *Token        { return e.token }
-func (e *ExprArray) Token() *Token      { return e.openingToken }
-func (e *ExprMap) Token() *Token        { return e.openingtoken }
-func (e *ExprBinary) Token() *Token     { return e.Op }
-func (e *ExprFuncall) Token() *Token    { return e.identifierToken }
-func (e *ExprFunc) Token() *Token       { return e.openingToken }
+func (e *ExprString) Token() *Token     { return &e.token }
+func (e *ExprIdentifier) Token() *Token { return &e.token }
+func (e *ExprNum) Token() *Token        { return &e.token }
+func (e *ExprNil) Token() *Token        { return &e.token }
+func (e *ExprArray) Token() *Token      { return &e.openingToken }
+func (e *ExprMap) Token() *Token        { return &e.openingtoken }
+func (e *ExprBinary) Token() *Token     { return &e.Op }
+func (e *ExprFuncall) Token() *Token    { return &e.identifierToken }
+func (e *ExprFunc) Token() *Token       { return &e.openingToken }
 
 func (*ExprString) exprNode()     {}
 func (*ExprIdentifier) exprNode() {}
@@ -114,13 +114,13 @@ type StmtExpr struct {
 
 type StmtBlock struct {
 	Body         []Stmt
-	openingToken *Token
+	openingToken Token
 }
 
 type StmtVar struct {
 	Identifier      string
 	Value           Expr
-	identifierToken *Token
+	identifierToken Token
 }
 
 type StmtFor struct {
@@ -151,29 +151,29 @@ type MatchCase struct {
 }
 
 type StmtContinue struct {
-	token *Token
+	token Token
 }
 
 type StmtBreak struct {
-	token *Token
+	token Token
 }
 
 type StmtSection struct {
 	Label      string
 	Body       Stmt
-	labelToken *Token
+	labelToken Token
 }
 
 func (s *StmtExpr) Token() *Token     { return s.Expr.Token() }
-func (s *StmtBlock) Token() *Token    { return s.openingToken }
-func (s *StmtVar) Token() *Token      { return s.identifierToken }
+func (s *StmtBlock) Token() *Token    { return &s.openingToken }
+func (s *StmtVar) Token() *Token      { return &s.identifierToken }
 func (s *StmtFor) Token() *Token      { return s.Value.Token() }
 func (s *StmtIf) Token() *Token       { return s.Condition.Token() }
 func (s *StmtReturn) Token() *Token   { return s.Value.Token() }
 func (s *StmtMatch) Token() *Token    { return s.Value.Token() }
-func (s *StmtContinue) Token() *Token { return s.token }
-func (s *StmtBreak) Token() *Token    { return s.token }
-func (s *StmtSection) Token() *Token  { return s.labelToken }
+func (s *StmtContinue) Token() *Token { return &s.token }
+func (s *StmtBreak) Token() *Token    { return &s.token }
+func (s *StmtSection) Token() *Token  { return &s.labelToken }
 
 func (*StmtExpr) stmtNode()     {}
 func (*StmtBlock) stmtNode()    {}
