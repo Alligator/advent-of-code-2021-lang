@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,12 @@ import (
 )
 
 func TestFiles(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Fatal(r)
+		}
+	}()
+
 	files, err := filepath.Glob("tests/*.aoc")
 	if err != nil {
 		panic(err)
