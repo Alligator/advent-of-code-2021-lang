@@ -6,10 +6,17 @@ import (
 	"strings"
 )
 
+type rule struct {
+	prec   Precedence
+	prefix func(*Parser) Expr
+	infix  func(*Parser, Expr) Expr
+}
+
 type Parser struct {
 	lex       *Lexer
 	token     Token
 	prevToken Token
+	rules     map[TokenTag]rule
 }
 
 type Precedence uint8
@@ -21,12 +28,46 @@ const (
 	PrecCompare
 	PrecSum
 	PrecProduct
+	PrecCall
 	PrecHighest
 )
 
 func NewParser(lex *Lexer) Parser {
 	eof := Token{EOF, 0, 0}
-	return Parser{lex, eof, eof}
+	p := Parser{
+		lex:       lex,
+		token:     eof,
+		prevToken: eof,
+	}
+	p.makeRules()
+	return p
+}
+
+func (p *Parser) makeRules() {
+	rules := map[TokenTag]rule{
+		Str:          {PrecNone, str, nil},
+		Num:          {PrecNone, number, nil},
+		Nil:          {PrecNone, nilExpr, nil},
+		Identifier:   {PrecNone, identifier, nil},
+		LSquare:      {PrecCall, array, subscript},
+		LParen:       {PrecCall, group, call},
+		LCurly:       {PrecNone, hashMap, nil},
+		Fn:           {PrecNone, fn, nil},
+		Equal:        {PrecAssign, nil, binary},
+		AmpAmp:       {PrecLogical, nil, binary},
+		EqualEqual:   {PrecCompare, nil, binary},
+		Greater:      {PrecCompare, nil, binary},
+		GreaterEqual: {PrecCompare, nil, binary},
+		Less:         {PrecCompare, nil, binary},
+		BangEqual:    {PrecCompare, nil, binary},
+		Plus:         {PrecSum, nil, binary},
+		Minus:        {PrecSum, nil, binary},
+		Star:         {PrecProduct, nil, binary},
+		Slash:        {PrecProduct, nil, binary},
+		Percent:      {PrecProduct, nil, binary},
+	}
+
+	p.rules = rules
 }
 
 func (p *Parser) atEnd() bool {
@@ -176,105 +217,42 @@ func (p *Parser) matchStmt() Stmt {
 }
 
 func (p *Parser) expression() Expr {
-	return p.expressionWithPrec(PrecNone)
+	return p.expressionWithPrec(PrecAssign)
 }
 
 func (p *Parser) expressionWithPrec(prec Precedence) Expr {
-	if prec == PrecHighest {
-		return p.unary()
+	prefixRule := p.rules[p.token.Tag]
+	if prefixRule.prefix == nil {
+		panic(p.fmtError("unexpected %s", p.token.Tag.String()))
 	}
 
-	lhs := p.expressionWithPrec(prec + 1)
+	// p.advance()
+	lhs := prefixRule.prefix(p)
 
-	for {
-		op := p.token
-		opLevel := PrecNone
-		switch op.Tag {
-		case Equal:
-			opLevel = PrecAssign
-		case AmpAmp:
-			opLevel = PrecLogical
-		case EqualEqual, Greater, GreaterEqual, Less, BangEqual:
-			opLevel = PrecCompare
-		case Plus, Minus:
-			opLevel = PrecSum
-		case Star, Slash, Percent:
-			opLevel = PrecProduct
-		default:
-			return lhs
+	for prec <= p.rules[p.token.Tag].prec {
+		infixRule := p.rules[p.token.Tag]
+		if infixRule.infix == nil {
+			panic(p.fmtError("unknown operator %s", p.token.Tag.String()))
 		}
-
-		if opLevel >= prec {
-			p.advance()
-			rhs := p.expressionWithPrec(prec + 1)
-			lhs = &ExprBinary{lhs, rhs, op}
-		} else {
-			return lhs
-		}
-	}
-}
-
-func (p *Parser) unary() Expr {
-	identToken := p.token
-	lhs := p.primary()
-	switch p.token.Tag {
-	case LParen:
-		p.consume(LParen)
-		args := make([]Expr, 0)
-		for p.token.Tag != RParen {
-			arg := p.expression()
-			args = append(args, arg)
-			if p.token.Tag != Comma {
-				break
-			}
-			p.consume(Comma)
-		}
-		p.consume(RParen)
-		return &ExprFuncall{lhs, args, identToken}
-	case LSquare:
-		opToken := p.token
-		p.consume(LSquare)
-		index := p.expression()
-		p.consume(RSquare)
-		return &ExprBinary{lhs, index, opToken}
+		lhs = infixRule.infix(p, lhs)
 	}
 	return lhs
 }
 
-func (p *Parser) primary() Expr {
-	switch p.token.Tag {
-	case Str:
-		return p.string()
-	case Num:
-		return p.number()
-	case Nil:
-		p.consume(Nil)
-		return &ExprNil{p.prevToken}
-	case Identifier:
-		return p.identifier()
-	case LSquare:
-		return p.array()
-	case LCurly:
-		return p.hashMap()
-	case LParen:
-		p.consume(LParen)
-		expr := p.expression()
-		p.consume(RParen)
-		return expr
-	case Fn:
-		return p.fn()
-	default:
-		panic(p.fmtError("expected a value but found %s", p.token.Tag))
-	}
+func binary(p *Parser, lhs Expr) Expr {
+	p.advance()
+	op := p.prevToken
+	rhs := p.expressionWithPrec(p.rules[op.Tag].prec)
+	return &ExprBinary{lhs, rhs, op}
 }
 
-func (p *Parser) string() Expr {
+func str(p *Parser) Expr {
 	p.consume(Str)
 	s := p.lex.GetString(p.prevToken)
 	return &ExprString{s, p.prevToken}
 }
 
-func (p *Parser) number() Expr {
+func number(p *Parser) Expr {
 	p.consume(Num)
 	s := p.lex.GetString(p.prevToken)
 	num, err := strconv.Atoi(s)
@@ -284,13 +262,18 @@ func (p *Parser) number() Expr {
 	return &ExprNum{num, p.prevToken}
 }
 
-func (p *Parser) identifier() Expr {
+func nilExpr(p *Parser) Expr {
+	p.consume(Nil)
+	return &ExprNil{p.prevToken}
+}
+
+func identifier(p *Parser) Expr {
 	p.consume(Identifier)
 	ident := p.lex.GetString(p.prevToken)
 	return &ExprIdentifier{ident, p.prevToken}
 }
 
-func (p *Parser) array() Expr {
+func array(p *Parser) Expr {
 	p.consume(LSquare)
 	openingToken := p.prevToken
 	items := make([]Expr, 0)
@@ -305,7 +288,7 @@ func (p *Parser) array() Expr {
 	return &ExprArray{items, openingToken}
 }
 
-func (p *Parser) hashMap() Expr {
+func hashMap(p *Parser) Expr {
 	openingToken := p.consume(LCurly)
 	items := make([]ExprMapItem, 0)
 	for p.token.Tag != RCurly {
@@ -323,7 +306,14 @@ func (p *Parser) hashMap() Expr {
 	return &ExprMap{items, openingToken}
 }
 
-func (p *Parser) fn() Expr {
+func group(p *Parser) Expr {
+	p.consume(LParen)
+	expr := p.expression()
+	p.consume(RParen)
+	return expr
+}
+
+func fn(p *Parser) Expr {
 	p.consume(Fn)
 	openingToken := p.prevToken
 
@@ -356,6 +346,29 @@ func (p *Parser) fn() Expr {
 	}
 }
 
+func call(p *Parser, lhs Expr) Expr {
+	p.consume(LParen)
+	args := make([]Expr, 0)
+	for p.token.Tag != RParen {
+		arg := p.expression()
+		args = append(args, arg)
+		if p.token.Tag != Comma {
+			break
+		}
+		p.consume(Comma)
+	}
+	p.consume(RParen)
+	return &ExprFuncall{lhs, args, *lhs.Token()}
+}
+
+func subscript(p *Parser, lhs Expr) Expr {
+	opToken := p.token
+	p.consume(LSquare)
+	index := p.expression()
+	p.consume(RSquare)
+	return &ExprBinary{lhs, index, opToken}
+}
+
 func (p *Parser) Parse() Program {
 	p.advance()
 	sections := make([]Stmt, 0)
@@ -365,7 +378,7 @@ func (p *Parser) Parse() Program {
 			section := p.section()
 			sections = append(sections, section)
 		case Fn:
-			fn := p.fn()
+			fn := fn(p)
 			sections = append(sections, &StmtExpr{fn})
 		default:
 			// let consume panic

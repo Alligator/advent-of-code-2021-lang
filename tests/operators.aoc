@@ -8,5 +8,11 @@ part1: {
   if 6 / 3 != 2 { return 0 }
   if 3 % 2 != 1 { return 0 }
   if 0 && 1 { return 0}
+
+  # precedence
+  if 1 + 2 * 3 != 7 { return 0 }
+  if 1 + 3 % 2 != 2 { return 0 }
+  var r = 1 == 1
+  if r == 0 { return 0 }
   return 1
 }
