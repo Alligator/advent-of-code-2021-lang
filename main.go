@@ -162,6 +162,6 @@ func evalSection(ev *lang.Evaluator, name string) lang.Value {
 func timeFunc(name string) func() {
 	start := time.Now()
 	return func() {
-		fmt.Printf("\x1b[93mbench:\x1b[0m %s took %v\n", name, time.Since(start))
+		fmt.Printf("\x1b[93mbench:\x1b[0m %s took %0.3fs\n", name, time.Since(start).Seconds())
 	}
 }
