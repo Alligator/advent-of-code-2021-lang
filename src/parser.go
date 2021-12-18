@@ -224,11 +224,10 @@ func (p *Parser) unary() Expr {
 		for p.token.Tag != RParen {
 			arg := p.expression()
 			args = append(args, arg)
-			if p.token.Tag == Comma {
-				p.consume(Comma)
-			} else {
+			if p.token.Tag != Comma {
 				break
 			}
+			p.consume(Comma)
 		}
 		p.consume(RParen)
 		return &ExprFuncall{lhs, args, identToken}
@@ -297,9 +296,10 @@ func (p *Parser) array() Expr {
 	items := make([]Expr, 0)
 	for p.token.Tag != RSquare {
 		items = append(items, p.expression())
-		if p.token.Tag == Comma {
-			p.consume(Comma)
+		if p.token.Tag != Comma {
+			break
 		}
+		p.consume(Comma)
 	}
 	p.consume(RSquare)
 	return &ExprArray{items, openingToken}
@@ -314,9 +314,10 @@ func (p *Parser) hashMap() Expr {
 		val := p.expression()
 		item := ExprMapItem{Key: p.lex.GetString(ident), Value: val}
 		items = append(items, item)
-		if p.token.Tag == Comma {
-			p.consume(Comma)
+		if p.token.Tag != Comma {
+			break
 		}
+		p.consume(Comma)
 	}
 	p.consume(RCurly)
 	return &ExprMap{items, openingToken}
@@ -338,9 +339,10 @@ func (p *Parser) fn() Expr {
 	for p.token.Tag != RParen {
 		p.consume(Identifier)
 		args = append(args, p.lex.GetString(p.prevToken))
-		if p.token.Tag == Comma {
-			p.consume(Comma)
+		if p.token.Tag != Comma {
+			break
 		}
+		p.consume(Comma)
 	}
 
 	p.consume(RParen)
