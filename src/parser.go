@@ -59,6 +59,7 @@ func (p *Parser) makeRules() {
 		Greater:      {PrecCompare, nil, binary},
 		GreaterEqual: {PrecCompare, nil, binary},
 		Less:         {PrecCompare, nil, binary},
+		LessEqual:    {PrecCompare, nil, binary},
 		BangEqual:    {PrecCompare, nil, binary},
 		Plus:         {PrecSum, nil, binary},
 		Minus:        {PrecSum, nil, binary},

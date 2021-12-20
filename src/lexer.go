@@ -27,6 +27,7 @@ const (
 	Greater      // >
 	GreaterEqual // >=
 	Less         // <
+	LessEqual    // <=
 	Plus         // +
 	Star         // *
 	Comma        // ,
@@ -230,6 +231,10 @@ func (lex *Lexer) NextToken() Token {
 	case '/':
 		return simpleToken(lex, Slash)
 	case '<':
+		if lex.peek() == '=' {
+			lex.advance()
+			return simpleToken(lex, LessEqual)
+		}
 		return simpleToken(lex, Less)
 	case '>':
 		if lex.peek() == '=' {

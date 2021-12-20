@@ -547,7 +547,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 			return val.negate()
 		}
 		return val
-	case Greater, GreaterEqual, Less:
+	case Greater, GreaterEqual, Less, LessEqual:
 		switch {
 		case lhs.Tag == ValNum && rhs.Tag == ValNum:
 			result := false
@@ -558,6 +558,8 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 				result = *lhs.Num >= *rhs.Num
 			case Less:
 				result = *lhs.Num < *rhs.Num
+			case LessEqual:
+				result = *lhs.Num <= *rhs.Num
 			}
 			num := 0
 			if result {
