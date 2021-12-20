@@ -683,6 +683,15 @@ func (ev *Evaluator) match(match *StmtMatch) error {
 MatchLoop:
 	for _, c := range match.Cases {
 		switch pattern := c.Cond.(type) {
+		case *ExprString:
+			if candidate.Tag != ValStr {
+				continue
+			}
+			if *candidate.Str == pattern.Str {
+				b := c.Body.(*StmtBlock)
+				ev.evalBlock(b)
+				return nil
+			}
 		case *ExprArray:
 			if candidate.Tag != ValArray {
 				continue
