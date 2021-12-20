@@ -128,6 +128,7 @@ type StmtFor struct {
 	IndexIdentifier string
 	Value           Expr
 	body            Stmt
+	openingToken    Token
 }
 
 type StmtIf struct {
@@ -167,7 +168,7 @@ type StmtSection struct {
 func (s *StmtExpr) Token() *Token     { return s.Expr.Token() }
 func (s *StmtBlock) Token() *Token    { return &s.openingToken }
 func (s *StmtVar) Token() *Token      { return &s.identifierToken }
-func (s *StmtFor) Token() *Token      { return s.Value.Token() }
+func (s *StmtFor) Token() *Token      { return &s.openingToken }
 func (s *StmtIf) Token() *Token       { return s.Condition.Token() }
 func (s *StmtReturn) Token() *Token   { return s.Value.Token() }
 func (s *StmtMatch) Token() *Token    { return s.Value.Token() }

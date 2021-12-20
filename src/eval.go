@@ -726,13 +726,28 @@ MatchLoop:
 			}
 			return nil
 		default:
-			panic(ev.fmtError(c.Cond, "unsupported match type %v", c.Cond))
+			panic(ev.fmtError(c.Cond, "unsupported match type %v", c.Cond.Token().Tag.String()))
 		}
 	}
 	return nil
 }
 
 func (ev *Evaluator) forLoop(node *StmtFor) error {
+	if node.Value == nil {
+		// infinite loop
+		ev.pushEnv()
+		defer func() { ev.popEnv() }()
+		for {
+			stop, err := ev.runForLoopBody(node, NilValue, NilValue)
+			if err != nil {
+				return err
+			}
+			if stop {
+				return nil
+			}
+		}
+	}
+
 	val := ev.evalExpr(&node.Value)
 	switch val.Tag {
 	case ValArray:
@@ -778,7 +793,9 @@ func (ev *Evaluator) forLoop(node *StmtFor) error {
 }
 
 func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index Value) (bool, error) {
-	ev.setEnv(node.Identifier, val)
+	if node.Identifier != "" {
+		ev.setEnv(node.Identifier, val)
+	}
 	if node.IndexIdentifier != "" {
 		ev.setEnv(node.IndexIdentifier, index)
 	}

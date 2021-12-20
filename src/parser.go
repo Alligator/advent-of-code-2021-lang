@@ -172,6 +172,12 @@ func (p *Parser) varDecl() Stmt {
 
 func (p *Parser) forLoop() Stmt {
 	p.consume(For)
+	openingToken := p.prevToken
+	if p.token.Tag == LCurly {
+		body := p.block()
+		return &StmtFor{body: body, openingToken: openingToken}
+	}
+
 	p.consume(Identifier)
 	ident := p.lex.GetString(p.prevToken)
 	indexIdent := ""
@@ -183,7 +189,7 @@ func (p *Parser) forLoop() Stmt {
 	p.consume(In)
 	val := p.expression()
 	body := p.block()
-	return &StmtFor{ident, indexIdent, val, body}
+	return &StmtFor{ident, indexIdent, val, body, openingToken}
 }
 
 func (p *Parser) ifStmt() Stmt {
