@@ -144,7 +144,7 @@ tagSwitch:
 		if key.Tag == ValNum {
 			index := *key.Num
 			array := *v.Array
-			if index >= len(array) {
+			if index >= len(array) || index < 0 {
 				return NilValue, fmt.Errorf("index %d out of range", index)
 			}
 			return (*v.Array)[*key.Num], nil
