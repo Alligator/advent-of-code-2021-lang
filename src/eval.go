@@ -486,7 +486,26 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 	rhs := ev.evalExpr(&expr.Rhs)
 
 	switch expr.Op.Tag {
-	case Plus, Minus, Star, Slash, Percent:
+	case Plus:
+		// coerce nils to 0
+		if lhs.Tag == ValNil {
+			lhs = ZeroValue
+		}
+		if rhs.Tag == ValNil {
+			rhs = ZeroValue
+		}
+
+		switch {
+		case lhs.Tag == ValNum && rhs.Tag == ValNum:
+			result := *lhs.Num + *rhs.Num
+			return Value{Tag: ValNum, Num: &result}
+		case lhs.Tag == ValStr || rhs.Tag == ValStr:
+			// coerce everything to string
+			result := lhs.String() + rhs.String()
+			return Value{Tag: ValStr, Str: &result}
+		}
+		panic(ev.fmtError(expr, "operator only supported for numbers and strings"))
+	case Minus, Star, Slash, Percent:
 		// coerce nils to 0
 		if lhs.Tag == ValNil {
 			lhs = ZeroValue
