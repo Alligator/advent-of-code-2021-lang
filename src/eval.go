@@ -367,13 +367,13 @@ func (ev *Evaluator) evalBlock(block Stmt) error {
 	switch b := block.(type) {
 	case *StmtBlock:
 		ev.pushEnv()
+		defer func() { ev.popEnv() }()
 		for _, stmt := range b.Body {
 			_, err := ev.evalStmt(&stmt)
 			if err != nil {
 				return err
 			}
 		}
-		ev.popEnv()
 	default:
 		panic(ev.fmtError(block, "expected a block but found %v", b))
 	}
@@ -710,6 +710,7 @@ MatchLoop:
 
 			// we found a match
 			ev.pushEnv()
+			defer func() { ev.popEnv() }()
 			for k, v := range vars {
 				ev.env.vars[k] = v
 			}
@@ -721,7 +722,6 @@ MatchLoop:
 					return err
 				}
 			}
-			ev.popEnv()
 			return nil
 		default:
 			panic(ev.fmtError(c.Cond, "unsupported match type %v", c.Cond))
@@ -735,6 +735,7 @@ func (ev *Evaluator) forLoop(node *StmtFor) error {
 	switch val.Tag {
 	case ValArray:
 		ev.pushEnv()
+		defer func() { ev.popEnv() }()
 		for index, item := range *val.Array {
 			i := index
 			stop, err := ev.runForLoopBody(node, item, Value{Tag: ValNum, Num: &i})
@@ -745,10 +746,10 @@ func (ev *Evaluator) forLoop(node *StmtFor) error {
 				break
 			}
 		}
-		ev.popEnv()
 	case ValRange:
 		rng := val.Range
 		ev.pushEnv()
+		defer func() { ev.popEnv() }()
 		for !rng.done() {
 			i := rng.current
 			stop, err := ev.runForLoopBody(node, Value{Tag: ValNum, Num: &i}, Value{Tag: ValNum, Num: &i})
@@ -760,15 +761,14 @@ func (ev *Evaluator) forLoop(node *StmtFor) error {
 			}
 			rng.next()
 		}
-		ev.popEnv()
 	case ValMap:
 		mp := val.Map
 		ev.pushEnv()
+		defer func() { ev.popEnv() }()
 		for key, val := range *mp {
 			s := key
 			ev.runForLoopBody(node, Value{Tag: ValStr, Str: &s}, val)
 		}
-		ev.popEnv()
 	default:
 		panic(ev.fmtError(node, "%s is not iterable", val.Tag.String()))
 	}
