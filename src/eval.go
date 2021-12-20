@@ -227,11 +227,18 @@ type Env struct {
 	vars   map[string]Value
 }
 
+type stackFrame struct {
+	callSite Node
+	fn       *Value
+	parent   *stackFrame
+}
+
 type Evaluator struct {
 	sections map[string]*StmtSection
 	env      *Env
 	section  *StmtSection
 	lex      *Lexer
+	stackTop *stackFrame
 }
 
 func NewEvaluator(prog *Program, lex *Lexer) Evaluator {
@@ -302,7 +309,15 @@ func (ev *Evaluator) find(name string) (*Value, bool) {
 
 func (ev *Evaluator) fmtError(node Node, format string, args ...interface{}) RuntimeError {
 	line, _ := ev.lex.GetLineAndCol(*node.Token())
+	lines := make([]string, 0)
+	frame := ev.stackTop
+	for frame != nil {
+		frame_line, _ := ev.lex.GetLineAndCol(*frame.callSite.Token())
+		lines = append(lines, fmt.Sprintf("  line %d", frame_line))
+		frame = frame.parent
+	}
 	msg := fmt.Sprintf(format, args...)
+	msg = fmt.Sprintf("%s\n%s", strings.Join(lines, "\n"), msg)
 	return RuntimeError{msg, line}
 }
 
@@ -417,7 +432,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 			}()
 			return fnVal.NativeFn(args)
 		case ValFn:
-			v, err := ev.fn(fnVal, args)
+			v, err := ev.fn(node, fnVal, args)
 			if err != nil {
 				panic(err) // FIXME
 			}
@@ -449,15 +464,24 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 	}
 }
 
-func (ev *Evaluator) fn(fnVal Value, args []Value) (Value, error) {
+func (ev *Evaluator) fn(node Node, fnVal Value, args []Value) (Value, error) {
 	fn := fnVal.Fn
+	frame := stackFrame{
+		callSite: node,
+		fn:       &fnVal,
+		parent:   ev.stackTop,
+	}
+	ev.stackTop = &frame
 
 	if len(fn.Args) != len(args) {
 		panic(ev.fmtError(fn, "arity mismatch: %s expects %d arguments", fn.Identifier, len(fn.Args)))
 	}
 
 	ev.pushEnv()
-	defer func() { ev.popEnv() }()
+	defer func() {
+		ev.popEnv()
+		ev.stackTop = frame.parent
+	}()
 
 	for index, ident := range fn.Args {
 		ev.setEnv(ident, args[index])
