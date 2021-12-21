@@ -593,7 +593,7 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 			return Value{Tag: ValNum, Num: &num}
 		}
 		panic(ev.fmtError(expr, "cannot compare %v and %v", lhs.Tag, rhs.Tag))
-	case AmpAmp:
+	case AmpAmp, PipePipe:
 		// coerce nils to 0
 		if lhs.Tag == ValNil {
 			lhs = ZeroValue
@@ -608,7 +608,15 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 
 		lhs_truthy := lhs.isTruthy()
 		rhs_truthy := rhs.isTruthy()
-		result := lhs_truthy && rhs_truthy
+
+		result := false
+		switch expr.Op.Tag {
+		case AmpAmp:
+			result = lhs_truthy && rhs_truthy
+		case PipePipe:
+			result = lhs_truthy || rhs_truthy
+		}
+
 		num_result := 0
 		if result {
 			num_result = 1

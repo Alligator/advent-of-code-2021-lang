@@ -33,22 +33,23 @@ func _() {
 	_ = x[Slash-22]
 	_ = x[Percent-23]
 	_ = x[AmpAmp-24]
-	_ = x[Var-25]
-	_ = x[For-26]
-	_ = x[In-27]
-	_ = x[If-28]
-	_ = x[Return-29]
-	_ = x[Continue-30]
-	_ = x[Match-31]
-	_ = x[Else-32]
-	_ = x[Break-33]
-	_ = x[Fn-34]
-	_ = x[Nil-35]
+	_ = x[PipePipe-25]
+	_ = x[Var-26]
+	_ = x[For-27]
+	_ = x[In-28]
+	_ = x[If-29]
+	_ = x[Return-30]
+	_ = x[Continue-31]
+	_ = x[Match-32]
+	_ = x[Else-33]
+	_ = x[Break-34]
+	_ = x[Fn-35]
+	_ = x[Nil-36]
 }
 
-const _TokenTag_name = "EOFIdentifierStrNum:{}()[]===!=>>=<<=+*,-/%&&varforinifreturncontinuematchelsebreakfnnil"
+const _TokenTag_name = "EOFIdentifierStrNum:{}()[]===!=>>=<<=+*,-/%&&||varforinifreturncontinuematchelsebreakfnnil"
 
-var _TokenTag_index = [...]uint8{0, 3, 13, 16, 19, 20, 21, 22, 23, 24, 25, 26, 27, 29, 31, 32, 34, 35, 37, 38, 39, 40, 41, 42, 43, 45, 48, 51, 53, 55, 61, 69, 74, 78, 83, 85, 88}
+var _TokenTag_index = [...]uint8{0, 3, 13, 16, 19, 20, 21, 22, 23, 24, 25, 26, 27, 29, 31, 32, 34, 35, 37, 38, 39, 40, 41, 42, 43, 45, 47, 50, 53, 55, 57, 63, 71, 76, 80, 85, 87, 90}
 
 func (i TokenTag) String() string {
 	if i >= TokenTag(len(_TokenTag_index)-1) {

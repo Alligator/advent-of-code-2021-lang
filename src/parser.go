@@ -55,6 +55,7 @@ func (p *Parser) makeRules() {
 		Fn:           {PrecNone, fn, nil},
 		Equal:        {PrecAssign, nil, binary},
 		AmpAmp:       {PrecLogical, nil, binary},
+		PipePipe:     {PrecLogical, nil, binary},
 		EqualEqual:   {PrecCompare, nil, binary},
 		Greater:      {PrecCompare, nil, binary},
 		GreaterEqual: {PrecCompare, nil, binary},
@@ -299,7 +300,7 @@ func hashMap(p *Parser) Expr {
 	openingToken := p.consume(LCurly)
 	items := make([]ExprMapItem, 0)
 	for p.token.Tag != RCurly {
-		ident := p.consume(Identifier, Num)
+		ident := p.consume(Identifier, Num, Str)
 		p.consume(Colon)
 		val := p.expression()
 		item := ExprMapItem{Key: p.lex.GetString(ident), Value: val}
