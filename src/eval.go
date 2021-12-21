@@ -256,6 +256,7 @@ func NewEvaluator(prog *Program, lex *Lexer) Evaluator {
 	ev.setEnv("split", Value{Tag: ValNativeFn, NativeFn: nativeSplit})
 	ev.setEnv("len", Value{Tag: ValNativeFn, NativeFn: nativeLen})
 	ev.setEnv("push", Value{Tag: ValNativeFn, NativeFn: nativePush})
+	ev.setEnv("slice", Value{Tag: ValNativeFn, NativeFn: nativeSlice})
 	ev.setEnv("delete", Value{Tag: ValNativeFn, NativeFn: nativeDelete})
 	ev.setEnv("range", Value{Tag: ValNativeFn, NativeFn: nativeRange})
 	ev.setEnv("rangei", Value{Tag: ValNativeFn, NativeFn: nativeRangeI})

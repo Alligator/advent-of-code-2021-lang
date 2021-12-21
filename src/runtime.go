@@ -89,6 +89,19 @@ func nativePush(args []Value) Value {
 	return Value{Tag: ValArray, Array: &array}
 }
 
+func nativeSlice(args []Value) Value {
+	checkArgs(args, ValArray, ValNum, ValNum)
+	array := *args[0].Array
+	from := *args[1].Num
+	to := *args[2].Num
+
+	if from < 0 || from > len(array)-1 || to < 0 || to > len(array)-1 {
+		panic(RuntimeError{"invalid index", 0})
+	}
+	slice := array[from:to]
+	return Value{Tag: ValArray, Array: &slice}
+}
+
 func nativeDelete(args []Value) Value {
 	checkArgs(args, ValArray, ValNum)
 
