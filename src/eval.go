@@ -2,225 +2,17 @@ package lang
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
-type ValueTag uint8
-
-//go:generate stringer -type=ValueTag -linecomment
-const (
-	ValNil      ValueTag = iota // nil
-	ValStr                      // string
-	ValNum                      // number
-	ValArray                    // array
-	ValMap                      // map
-	ValRange                    // range
-	ValNativeFn                 // <nativeFn>
-	ValFn                       // <fn>
-)
-
-type Value struct {
-	Tag      ValueTag
-	Str      *string
-	Num      *int
-	Array    *[]Value
-	Map      *map[string]Value
-	Range    *Range
-	NativeFn func([]Value) Value
-	Fn       *ExprFunc
-}
-
-var NilValue = Value{Tag: ValNil}
-var zero = 0
-var ZeroValue = Value{Tag: ValNum, Num: &zero}
-
 // control flow errors
-type returnValue struct {
-	value Value
-}
+type returnValue struct{ value Value }
 type breakError struct{}
 type continueError struct{}
 
 func (r returnValue) Error() string   { return "" }
 func (b breakError) Error() string    { return "" }
 func (c continueError) Error() string { return "" }
-
-type Range struct {
-	current int
-	end     int
-	step    int
-}
-
-func (r *Range) next() {
-	if !r.done() {
-		r.current += r.step
-	}
-}
-
-func (r *Range) done() bool {
-	return r.current == r.end
-}
-
-func (v Value) Repr() string {
-	switch v.Tag {
-	case ValNil:
-		return "nil"
-	case ValStr:
-		return "'" + *v.Str + "'"
-	case ValNum:
-		return strconv.Itoa(*v.Num)
-	case ValArray:
-		var sb strings.Builder
-		sb.WriteString("[")
-		for index, val := range *v.Array {
-			sb.WriteString(val.Repr())
-			if index < len(*v.Array)-1 {
-				sb.WriteString(", ")
-			}
-		}
-		sb.WriteString("]")
-		return sb.String()
-	case ValMap:
-		var sb strings.Builder
-		sb.WriteString("{")
-		empty := true
-		for k, v := range *v.Map {
-			sb.WriteString(k)
-			sb.WriteString(": ")
-			sb.WriteString(v.Repr())
-			sb.WriteString(", ")
-			empty = false
-		}
-		if empty {
-			sb.WriteString("}")
-		} else {
-			sb.WriteString("\b\b}") // backspace over the last comma
-		}
-		return sb.String()
-	default:
-		return fmt.Sprintf("<%s>\n", v.Tag.String())
-	}
-}
-
-func (v Value) String() string {
-	switch v.Tag {
-	case ValNil:
-		return "nil"
-	case ValStr:
-		return *v.Str
-	case ValNum:
-		return strconv.Itoa(*v.Num)
-	default:
-		return v.Repr()
-	}
-}
-
-func (v Value) isTruthy() bool {
-	switch v.Tag {
-	case ValNum:
-		return *v.Num != 0
-	}
-	return false
-}
-
-func (v Value) negate() Value {
-	switch v.Tag {
-	case ValNum:
-		num := *v.Num
-		num = num - 1
-		if num < 0 {
-			num = -num
-		}
-		return Value{Tag: ValNum, Num: &num}
-	}
-	return NilValue
-}
-
-func (v Value) getKey(key Value) (Value, error) {
-tagSwitch:
-	switch v.Tag {
-	case ValArray:
-		if key.Tag == ValNum {
-			index := *key.Num
-			array := *v.Array
-			if index >= len(array) || index < 0 {
-				return NilValue, fmt.Errorf("index %d out of range", index)
-			}
-			return (*v.Array)[*key.Num], nil
-		}
-	case ValMap:
-		var keyStr string
-
-		switch key.Tag {
-		case ValNum:
-			keyStr = strconv.Itoa(*key.Num)
-		case ValStr:
-			keyStr = *key.Str
-		default:
-			break tagSwitch
-		}
-
-		return (*v.Map)[keyStr], nil
-	case ValStr:
-		if key.Tag == ValNum {
-			index := *key.Num
-			str := *v.Str
-			if index >= len(str) {
-				return NilValue, fmt.Errorf("index %d out of range", index)
-			}
-			s := string((*v.Str)[*key.Num])
-			return Value{Tag: ValStr, Str: &s}, nil
-		}
-	}
-	return NilValue, fmt.Errorf("cannot subscript a %v with a %v", v.Tag, key.Tag)
-}
-
-func (v Value) setKey(key Value, val Value) bool {
-tagSwitch:
-	switch v.Tag {
-	case ValArray:
-		if key.Tag == ValNum {
-			(*v.Array)[*key.Num] = val
-			return true
-		}
-	case ValMap:
-		var keyStr string
-
-		switch key.Tag {
-		case ValNum:
-			keyStr = strconv.Itoa(*key.Num)
-		case ValStr:
-			keyStr = *key.Str
-		default:
-			break tagSwitch
-		}
-
-		(*v.Map)[keyStr] = val
-		return true
-	}
-	return false
-}
-
-func (v Value) CheckTagOrPanic(expectedTag ValueTag) {
-	if v.Tag != expectedTag {
-		panic(fmt.Errorf("expected a %s but found a %s", expectedTag.String(), v.Tag.String()))
-	}
-}
-
-func (v Value) Compare(b Value) (bool, error) {
-	switch {
-	case v.Tag == ValNum && b.Tag == ValNum:
-		return *v.Num == *b.Num, nil
-	case v.Tag == ValStr && b.Tag == ValStr:
-		return *v.Str == *b.Str, nil
-	case v.Tag == ValNil && b.Tag == ValNil:
-		return true, nil
-	case v.Tag == ValNil && b.Tag != ValNil, v.Tag != ValNil && b.Tag == ValNil:
-		return false, nil
-	}
-	return false, fmt.Errorf("cannot compare %s and %s", v.Tag.String(), b.Tag.String())
-}
 
 type Env struct {
 	parent *Env
@@ -229,7 +21,7 @@ type Env struct {
 
 type stackFrame struct {
 	callSite Node
-	fn       *Value
+	env      *Env
 	parent   *stackFrame
 }
 
@@ -278,6 +70,18 @@ func (ev *Evaluator) popEnv() {
 		panic("attempted to pop last env")
 	}
 	ev.env = ev.env.parent
+}
+
+func (ev *Evaluator) pushFrame(node Node) {
+	frame := stackFrame{node, ev.env, ev.stackTop}
+	ev.stackTop = &frame
+}
+
+func (ev *Evaluator) popFrame() {
+	if ev.stackTop.parent == nil {
+		panic("attempted to pop last stack frame")
+	}
+	ev.stackTop = ev.stackTop.parent
 }
 
 func (ev *Evaluator) setEnv(name string, val Value) {
@@ -335,6 +139,8 @@ func (ev *Evaluator) ReadInput(input string) {
 }
 
 func (ev *Evaluator) evalProgram(prog *Program) error {
+	ev.pushFrame(prog)
+
 	// read all the sections
 	for _, section := range prog.Stmts {
 		if stmt, ok := section.(*StmtSection); ok {
@@ -347,6 +153,7 @@ func (ev *Evaluator) evalProgram(prog *Program) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -442,7 +249,8 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 
 		panic(ev.fmtError(node, "attempted to call non function"))
 	case *ExprFunc:
-		fnVal := Value{Tag: ValFn, Fn: node}
+		closure := Closure{node, ev.env}
+		fnVal := Value{Tag: ValFn, Fn: &closure}
 		ev.setEnv(node.Identifier, fnVal)
 		return fnVal
 	case *ExprBinary:
@@ -466,22 +274,21 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 }
 
 func (ev *Evaluator) fn(node Node, fnVal Value, args []Value) (Value, error) {
-	fn := fnVal.Fn
-	frame := stackFrame{
-		callSite: node,
-		fn:       &fnVal,
-		parent:   ev.stackTop,
-	}
-	ev.stackTop = &frame
+	closure := fnVal.Fn
+	fn := closure.fn
+	prevEnv := ev.env
 
 	if len(fn.Args) != len(args) {
 		panic(ev.fmtError(fn, "arity mismatch: %s expects %d arguments", fn.Identifier, len(fn.Args)))
 	}
 
+	ev.env = closure.env
 	ev.pushEnv()
+	ev.pushFrame(node)
 	defer func() {
+		ev.popFrame()
 		ev.popEnv()
-		ev.stackTop = frame.parent
+		ev.env = prevEnv
 	}()
 
 	for index, ident := range fn.Args {
