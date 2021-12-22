@@ -15,17 +15,11 @@ var benchMode bool
 func main() {
 	defer func() {
 		if r := recover(); r != nil {
-			switch e := r.(type) {
-			case lang.LexError:
-				fmt.Fprintf(os.Stderr, "\n\x1b[91mtokenization error on line %d\x1b[0m\n%s\n", e.Line, e.Msg)
-			case lang.ParseError:
-				fmt.Fprintf(os.Stderr, "\n\x1b[91mparse error on line %d\x1b[0m\n%s\n", e.Line, e.Msg)
-			case lang.RuntimeError:
-				fmt.Fprintf(os.Stderr, "\n\x1b[91mruntime error on line %d\x1b[0m\n%s\n", e.Line, e.Msg)
-			default:
-				panic(r)
+			if e, ok := r.(lang.Error); ok {
+				fmt.Fprintf(os.Stderr, "\n\x1b[91m%s on line %d\x1b[0m\n%s\n", e.Tag.String(), e.Line, e.Msg)
+				os.Exit(1)
 			}
-			os.Exit(1)
+			panic(r)
 		}
 	}()
 

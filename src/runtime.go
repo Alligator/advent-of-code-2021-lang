@@ -10,13 +10,13 @@ import (
 
 func checkArgs(args []Value, tags ...ValueTag) {
 	if len(args) != len(tags) {
-		panic(RuntimeError{"arity mismatch", 0})
+		panic(E(RuntimeError, "arity mismatch", 0))
 	}
 
 	for index, tag := range tags {
 		if args[index].Tag != tag {
 			msg := fmt.Sprintf("arg type mismatch: expected %s got %s", tag.String(), args[index].Tag.String())
-			panic(RuntimeError{msg, 0})
+			panic(E(RuntimeError, msg, 0))
 		}
 	}
 }
@@ -96,7 +96,7 @@ func nativeSlice(args []Value) Value {
 	to := *args[2].Num
 
 	if from < 0 || from > len(array)-1 || to < 0 || to > len(array)-1 {
-		panic(RuntimeError{"invalid index", 0})
+		panic(E(RuntimeError, "invalid index", 0))
 	}
 	slice := array[from:to]
 	return Value{Tag: ValArray, Array: &slice}

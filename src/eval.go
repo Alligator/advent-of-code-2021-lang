@@ -112,18 +112,18 @@ func (ev *Evaluator) find(name string) (*Value, bool) {
 	return &NilValue, false
 }
 
-func (ev *Evaluator) fmtError(node Node, format string, args ...interface{}) RuntimeError {
+func (ev *Evaluator) fmtError(node Node, format string, args ...interface{}) Error {
 	line, _ := ev.lex.GetLineAndCol(*node.Token())
-	lines := make([]string, 0)
-	frame := ev.stackTop
-	for frame != nil {
-		frame_line, _ := ev.lex.GetLineAndCol(*frame.callSite.Token())
-		lines = append(lines, fmt.Sprintf("  line %d", frame_line))
-		frame = frame.parent
-	}
+	// lines := make([]string, 0)
+	// frame := ev.stackTop
+	// for frame != nil {
+	// 	frame_line, _ := ev.lex.GetLineAndCol(*frame.callSite.Token())
+	// 	lines = append(lines, fmt.Sprintf("  line %d", frame_line))
+	// 	frame = frame.parent
+	// }
 	msg := fmt.Sprintf(format, args...)
-	msg = fmt.Sprintf("%s\n%s", strings.Join(lines, "\n"), msg)
-	return RuntimeError{msg, line}
+	// msg = fmt.Sprintf("%s\n%s", strings.Join(lines, "\n"), msg)
+	return E(RuntimeError, msg, line)
 }
 
 func (ev *Evaluator) ReadInput(input string) {
@@ -229,7 +229,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 		case ValNativeFn:
 			defer func() {
 				if r := recover(); r != nil {
-					if e, ok := r.(RuntimeError); ok {
+					if e, ok := r.(Error); ok {
 						// patch the line number, native functions don't know it
 						line, _ := ev.lex.GetLineAndCol(node.identifierToken)
 						e.Line = line

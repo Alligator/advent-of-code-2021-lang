@@ -76,10 +76,10 @@ func (p *Parser) atEnd() bool {
 	return p.token.Tag == EOF
 }
 
-func (p *Parser) fmtError(msg string, args ...interface{}) ParseError {
+func (p *Parser) fmtError(msg string, args ...interface{}) Error {
 	line, _ := p.lex.GetLineAndCol(p.token)
 	formattedMsg := fmt.Sprintf(msg, args...)
-	return ParseError{formattedMsg, line}
+	return E(ParseError, formattedMsg, line)
 }
 
 func (p *Parser) advance() {

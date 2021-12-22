@@ -79,9 +79,9 @@ func stringToken(lex *Lexer, tag TokenTag, start int) Token {
 	return Token{tag, start, lex.pos - start}
 }
 
-func (lex *Lexer) fmtError(msg string, args ...interface{}) LexError {
+func (lex *Lexer) fmtError(msg string, args ...interface{}) Error {
 	formattedMsg := fmt.Sprintf(msg, args...)
-	return LexError{formattedMsg, lex.line}
+	return E(LexError, formattedMsg, lex.line)
 }
 
 func (lex *Lexer) peek() rune {
