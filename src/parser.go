@@ -84,7 +84,11 @@ func (p *Parser) fmtError(msg string, args ...interface{}) Error {
 
 func (p *Parser) advance() {
 	p.prevToken = p.token
-	p.token = p.lex.NextToken()
+	token, err := p.lex.NextToken()
+	if err != nil {
+		panic(err)
+	}
+	p.token = token
 }
 
 func (p *Parser) consume(expected ...TokenTag) Token {

@@ -100,13 +100,13 @@ func (lex *Lexer) advance() rune {
 	lex.pos += size
 	return r
 }
-func (lex *Lexer) consume(expected rune) rune {
+func (lex *Lexer) consume(expected rune) error {
 	r, size := utf8.DecodeRuneInString(lex.src[lex.pos:])
 	if r != expected {
-		panic(lex.fmtError("expected %q but saw %q", expected, r))
+		return lex.fmtError("expected %q but saw %q", expected, r)
 	}
 	lex.pos += size
-	return r
+	return nil
 }
 
 func (lex *Lexer) skipWhitespace() {
@@ -167,13 +167,16 @@ func (lex *Lexer) identifier() Token {
 	}
 }
 
-func (lex *Lexer) string() Token {
+func (lex *Lexer) string() (Token, error) {
 	for lex.peek() != '\'' {
 		lex.advance()
 	}
 	t := stringToken(lex, Str, lex.tokenStart+1)
-	lex.consume('\'')
-	return t
+	err := lex.consume('\'')
+	if err != nil {
+		return Token{}, err
+	}
+	return t, nil
 }
 
 func (lex *Lexer) number() Token {
@@ -183,9 +186,9 @@ func (lex *Lexer) number() Token {
 	return stringToken(lex, Num, lex.tokenStart)
 }
 
-func (lex *Lexer) NextToken() Token {
+func (lex *Lexer) NextToken() (retToken Token, err error) {
 	if lex.pos >= len(lex.src) {
-		return simpleToken(lex, EOF)
+		return simpleToken(lex, EOF), nil
 	}
 
 	lex.skipWhitespace()
@@ -193,79 +196,83 @@ func (lex *Lexer) NextToken() Token {
 	lex.tokenStart = lex.pos
 
 	if unicode.IsLetter(r) {
-		return lex.identifier()
+		return lex.identifier(), nil
 	}
 
 	if unicode.IsDigit(r) {
-		return lex.number()
+		return lex.number(), nil
 	}
 
 	lex.advance()
 
 	switch r {
 	case '\'':
-		return lex.string()
+		token, err := lex.string()
+		if err != nil {
+			return Token{}, err
+		}
+		return token, nil
 	case ':':
-		return simpleToken(lex, Colon)
+		return simpleToken(lex, Colon), nil
 	case '{':
-		return simpleToken(lex, LCurly)
+		return simpleToken(lex, LCurly), nil
 	case '}':
-		return simpleToken(lex, RCurly)
+		return simpleToken(lex, RCurly), nil
 	case '(':
-		return simpleToken(lex, LParen)
+		return simpleToken(lex, LParen), nil
 	case ')':
-		return simpleToken(lex, RParen)
+		return simpleToken(lex, RParen), nil
 	case '*':
-		return simpleToken(lex, Star)
+		return simpleToken(lex, Star), nil
 	case '+':
-		return simpleToken(lex, Plus)
+		return simpleToken(lex, Plus), nil
 	case '%':
-		return simpleToken(lex, Percent)
+		return simpleToken(lex, Percent), nil
 	case ',':
-		return simpleToken(lex, Comma)
+		return simpleToken(lex, Comma), nil
 	case '[':
-		return simpleToken(lex, LSquare)
+		return simpleToken(lex, LSquare), nil
 	case ']':
-		return simpleToken(lex, RSquare)
+		return simpleToken(lex, RSquare), nil
 	case '-':
-		return simpleToken(lex, Minus)
+		return simpleToken(lex, Minus), nil
 	case '/':
-		return simpleToken(lex, Slash)
+		return simpleToken(lex, Slash), nil
 	case '<':
 		if lex.peek() == '=' {
 			lex.advance()
-			return simpleToken(lex, LessEqual)
+			return simpleToken(lex, LessEqual), nil
 		}
-		return simpleToken(lex, Less)
+		return simpleToken(lex, Less), nil
 	case '>':
 		if lex.peek() == '=' {
 			lex.advance()
-			return simpleToken(lex, GreaterEqual)
+			return simpleToken(lex, GreaterEqual), nil
 		}
-		return simpleToken(lex, Greater)
+		return simpleToken(lex, Greater), nil
 	case '=':
 		if lex.peek() == '=' {
 			lex.advance()
-			return simpleToken(lex, EqualEqual)
+			return simpleToken(lex, EqualEqual), nil
 		}
-		return simpleToken(lex, Equal)
+		return simpleToken(lex, Equal), nil
 	case '!':
 		if lex.peek() == '=' {
 			lex.advance()
-			return simpleToken(lex, BangEqual)
+			return simpleToken(lex, BangEqual), nil
 		}
 	case '&':
 		if lex.peek() == '&' {
 			lex.advance()
-			return simpleToken(lex, AmpAmp)
+			return simpleToken(lex, AmpAmp), nil
 		}
 	case '|':
 		if lex.peek() == '|' {
 			lex.advance()
-			return simpleToken(lex, PipePipe)
+			return simpleToken(lex, PipePipe), nil
 		}
 	}
-	panic(lex.fmtError("unexpected character %q (%x)", r, r))
+	return retToken, lex.fmtError("unexpected character %q (%x)", r, r)
 }
 
 func (lex *Lexer) GetString(token Token) string {

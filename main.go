@@ -47,7 +47,10 @@ func main() {
 		line := 0
 		lines := strings.Split(strings.TrimSpace(string(f)), "\n")
 		for {
-			t := l.NextToken()
+			t, err := l.NextToken()
+			if err != nil {
+				panic(err)
+			}
 			tline, _ := l.GetLineAndCol(t)
 			if tline != line {
 				line = tline
