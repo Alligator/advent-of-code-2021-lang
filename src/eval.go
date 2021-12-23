@@ -255,6 +255,8 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 		return fnVal
 	case *ExprBinary:
 		return ev.evalBinaryExpr(node)
+	case *ExprUnary:
+		return ev.evalUnaryExpr(node)
 	case *ExprArray:
 		items := make([]Value, 0)
 		for _, itemExpr := range node.Items {
@@ -438,6 +440,20 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		return val
 	default:
 		panic(ev.fmtError(expr, "unknown operator %s", expr.Op.Tag.String()))
+	}
+}
+
+func (ev *Evaluator) evalUnaryExpr(expr *ExprUnary) Value {
+	lhs := ev.evalExpr(&expr.Lhs)
+	switch expr.Op.Tag {
+	case Minus:
+		if lhs.Tag != ValNum {
+			panic(ev.fmtError(expr, "operator only supported for numbers"))
+		}
+		res := 0 - *lhs.Num
+		return Value{Tag: ValNum, Num: &res}
+	default:
+		panic(ev.fmtError(expr, "unknown unary operator %s", expr.Op.Tag.String()))
 	}
 }
 

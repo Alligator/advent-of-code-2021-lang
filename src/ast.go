@@ -72,6 +72,11 @@ type ExprBinary struct {
 	Op  Token
 }
 
+type ExprUnary struct {
+	Lhs Expr
+	Op  Token
+}
+
 type ExprFuncall struct {
 	Identifier      Expr
 	Args            []Expr
@@ -92,6 +97,7 @@ func (e *ExprNil) Token() *Token        { return &e.token }
 func (e *ExprArray) Token() *Token      { return &e.openingToken }
 func (e *ExprMap) Token() *Token        { return &e.openingtoken }
 func (e *ExprBinary) Token() *Token     { return &e.Op }
+func (e *ExprUnary) Token() *Token      { return &e.Op }
 func (e *ExprFuncall) Token() *Token    { return &e.identifierToken }
 func (e *ExprFunc) Token() *Token       { return &e.openingToken }
 
@@ -102,6 +108,7 @@ func (*ExprNil) exprNode()        {}
 func (*ExprArray) exprNode()      {}
 func (*ExprMap) exprNode()        {}
 func (*ExprBinary) exprNode()     {}
+func (*ExprUnary) exprNode()      {}
 func (*ExprFuncall) exprNode()    {}
 func (*ExprFunc) exprNode()       {}
 

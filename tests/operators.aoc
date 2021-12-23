@@ -7,7 +7,8 @@ part1: {
   if 2 * 3 != 6 { return 0 }
   if 6 / 3 != 2 { return 0 }
   if 3 % 2 != 1 { return 0 }
-  if 0 && 1 { return 0}
+  if 0 && 1 { return 0 }
+  if -1 != 0 - 1 { return 0 }
 
   # precedence
   if 1 + 2 * 3 != 7 { return 0 }

@@ -29,6 +29,7 @@ const (
 	PrecSum
 	PrecProduct
 	PrecCall
+	PrecUnary
 	PrecHighest
 )
 
@@ -63,7 +64,7 @@ func (p *Parser) makeRules() {
 		LessEqual:    {PrecCompare, nil, binary},
 		BangEqual:    {PrecCompare, nil, binary},
 		Plus:         {PrecSum, nil, binary},
-		Minus:        {PrecSum, nil, binary},
+		Minus:        {PrecSum, unary, binary},
 		Star:         {PrecProduct, nil, binary},
 		Slash:        {PrecProduct, nil, binary},
 		Percent:      {PrecProduct, nil, binary},
@@ -256,6 +257,13 @@ func binary(p *Parser, lhs Expr) Expr {
 	op := p.prevToken
 	rhs := p.expressionWithPrec(p.rules[op.Tag].prec)
 	return &ExprBinary{lhs, rhs, op}
+}
+
+func unary(p *Parser) Expr {
+	p.advance()
+	op := p.prevToken
+	lhs := p.expressionWithPrec(PrecUnary)
+	return &ExprUnary{lhs, op}
 }
 
 func str(p *Parser) Expr {
