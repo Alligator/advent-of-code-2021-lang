@@ -22,8 +22,12 @@ func checkArgs(args []Value, tags ...ValueTag) {
 }
 
 func nativePrint(args []Value) Value {
-	for _, arg := range args {
-		fmt.Print(arg.String() + " ")
+	for idx, arg := range args {
+		if idx > 0 {
+			fmt.Print(" " + arg.String())
+		} else {
+			fmt.Print(arg.String())
+		}
 	}
 	return NilValue
 }
