@@ -53,6 +53,7 @@ func NewEvaluator(prog *Program, lex *Lexer) Evaluator {
 	ev.setEnv("range", Value{Tag: ValNativeFn, NativeFn: nativeRange})
 	ev.setEnv("rangei", Value{Tag: ValNativeFn, NativeFn: nativeRangeI})
 	ev.setEnv("sort", Value{Tag: ValNativeFn, NativeFn: nativeSort})
+	ev.setEnv("upper", Value{Tag: ValNativeFn, NativeFn: nativeUpper})
 
 	ev.evalProgram(prog)
 	return ev
@@ -382,6 +383,14 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 		return val
 	case Greater, GreaterEqual, Less, LessEqual:
+		// coerce nils to 0
+		if lhs.Tag == ValNil {
+			lhs = ZeroValue
+		}
+		if rhs.Tag == ValNil {
+			rhs = ZeroValue
+		}
+
 		switch {
 		case lhs.Tag == ValNum && rhs.Tag == ValNum:
 			result := false

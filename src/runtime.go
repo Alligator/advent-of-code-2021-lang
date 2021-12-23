@@ -166,3 +166,10 @@ func nativeSort(args []Value) Value {
 	})
 	return Value{Tag: ValArray, Array: &dest}
 }
+
+func nativeUpper(args []Value) Value {
+	checkArgs(args, ValStr)
+	str := *args[0].Str
+	ustr := strings.ToUpper(str)
+	return Value{Tag: ValStr, Str: &ustr}
+}
