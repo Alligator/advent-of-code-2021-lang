@@ -1,3 +1,4 @@
 ﻿*.exe
 aoc21
 .vscode
+/*.aoc

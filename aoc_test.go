@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	lang "github.com/alligator/advent-of-code-2021-lang/src"
+	cli "github.com/alligator/advent-of-code-2021-lang/cli"
 )
 
 func TestFiles(t *testing.T) {
@@ -31,7 +32,7 @@ func TestFiles(t *testing.T) {
 		p := lang.NewParser(&l)
 		prog := p.Parse()
 		ev := lang.NewEvaluator(&prog, &l)
-		result := test(&ev)
+		result := cli.Test(&ev, false)
 		if !result {
 			t.Error(fileName)
 		}
