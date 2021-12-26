@@ -313,10 +313,20 @@ func hashMap(p *Parser) Expr {
 	items := make([]ExprMapItem, 0)
 	for p.token.Tag != RCurly {
 		ident := p.consume(Identifier, Num, Str)
-		p.consume(Colon)
-		val := p.expression()
-		item := ExprMapItem{Key: p.lex.GetString(ident), Value: val}
-		items = append(items, item)
+		if p.token.Tag == Colon {
+			p.consume(Colon)
+			val := p.expression()
+			item := ExprMapItem{Key: p.lex.GetString(ident), Value: val}
+			items = append(items, item)
+		} else {
+			// shorthand
+			key := p.lex.GetString(ident)
+			item := ExprMapItem{
+					Key: key,
+					Value: &ExprIdentifier{key, ident},
+			}
+			items = append(items, item)
+		}
 		if p.token.Tag != Comma {
 			break
 		}

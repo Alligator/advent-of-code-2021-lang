@@ -2,7 +2,9 @@ test: 'abc'
 test_part1: 5
 
 part1: {
-  var map = { a: 1, b: 3, 0: 2 }
+  var a = 1
+  var m = { a }
+  var map = { a, b: 3, 0: 2 }
   map['b'] = 2
   return map['a'] + map['b'] + map[0]
 }
