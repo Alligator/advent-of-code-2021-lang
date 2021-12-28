@@ -66,6 +66,7 @@ func NewEvaluator(prog *Program, lex *Lexer, profile bool) Evaluator {
 	ev.setEnv("rangei", &Value{Tag: ValNativeFn, NativeFn: nativeRangeI})
 	ev.setEnv("sort", &Value{Tag: ValNativeFn, NativeFn: nativeSort})
 	ev.setEnv("upper", &Value{Tag: ValNativeFn, NativeFn: nativeUpper})
+	ev.setEnv("array", &Value{Tag: ValNativeFn, NativeFn: nativeArray})
 
 	ev.evalProgram(prog)
 	return ev

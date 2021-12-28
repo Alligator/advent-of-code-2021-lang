@@ -39,11 +39,18 @@ func nativePrintLn(args []Value) Value {
 }
 
 func nativeNum(args []Value) Value {
-	checkArgs(args, ValStr)
-	i, err := strconv.Atoi(strings.TrimSpace(*args[0].Str))
+	base := 10
+	if len(args) == 1 {
+		checkArgs(args, ValStr)
+	} else {
+		checkArgs(args, ValStr, ValNum)
+		base = *args[1].Num
+	}
+	i64, err := strconv.ParseInt(*args[0].Str, base, 0)
 	if err != nil {
 		return NilValue
 	}
+	i := int(i64)
 	return Value{Tag: ValNum, Num: &i}
 }
 
@@ -167,4 +174,11 @@ func nativeUpper(args []Value) Value {
 	str := *args[0].Str
 	ustr := strings.ToUpper(str)
 	return Value{Tag: ValStr, Str: &ustr}
+}
+
+func nativeArray(args []Value) Value {
+	checkArgs(args, ValNum)
+	length := *args[0].Num
+	arr := make([]Value, length)
+	return Value{Tag: ValArray, Array: &arr}
 }
