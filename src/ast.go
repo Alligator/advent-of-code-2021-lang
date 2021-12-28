@@ -8,6 +8,7 @@ import (
 type (
 	Node interface {
 		Token() *Token
+		Name() string
 	}
 	Expr interface {
 		Node
@@ -28,6 +29,7 @@ type Program struct {
 
 func (p *Program) Pos() int      { return 0 }
 func (p *Program) Token() *Token { return nil }
+func (p *Program) Name() string { return "<root>" }
 
 //
 // expressions
@@ -100,6 +102,17 @@ func (e *ExprBinary) Token() *Token     { return &e.Op }
 func (e *ExprUnary) Token() *Token      { return &e.Op }
 func (e *ExprFuncall) Token() *Token    { return &e.identifierToken }
 func (e *ExprFunc) Token() *Token       { return &e.openingToken }
+
+func (e *ExprString) Name() string     { return "<string>" }
+func (e *ExprIdentifier) Name() string { return e.Identifier }
+func (e *ExprNum) Name() string        { return "<number>" }
+func (e *ExprNil) Name() string        { return "nil" }
+func (e *ExprArray) Name() string      { return "<array>" }
+func (e *ExprMap) Name() string        { return "<map>" }
+func (e *ExprBinary) Name() string     { return "" }
+func (e *ExprUnary) Name() string      { return "" }
+func (e *ExprFuncall) Name() string    { return e.Identifier.Name() }
+func (e *ExprFunc) Name() string       { return e.Identifier }
 
 func (*ExprString) exprNode()     {}
 func (*ExprIdentifier) exprNode() {}
@@ -182,6 +195,17 @@ func (s *StmtMatch) Token() *Token    { return s.Value.Token() }
 func (s *StmtContinue) Token() *Token { return &s.token }
 func (s *StmtBreak) Token() *Token    { return &s.token }
 func (s *StmtSection) Token() *Token  { return &s.labelToken }
+
+func (s *StmtExpr) Name() string     { return "" }
+func (s *StmtBlock) Name() string    { return "" }
+func (s *StmtVar) Name() string      { return "" }
+func (s *StmtFor) Name() string      { return "" }
+func (s *StmtIf) Name() string       { return "" }
+func (s *StmtReturn) Name() string   { return "" }
+func (s *StmtMatch) Name() string    { return "" }
+func (s *StmtContinue) Name() string { return "" }
+func (s *StmtBreak) Name() string    { return "" }
+func (s *StmtSection) Name() string  { return s.Label }
 
 func (*StmtExpr) stmtNode()     {}
 func (*StmtBlock) stmtNode()    {}

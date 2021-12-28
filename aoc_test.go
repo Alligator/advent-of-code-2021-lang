@@ -31,7 +31,7 @@ func TestFiles(t *testing.T) {
 		l := lang.NewLexer(strings.TrimSpace(string(f)))
 		p := lang.NewParser(&l)
 		prog := p.Parse()
-		ev := lang.NewEvaluator(&prog, &l)
+		ev := lang.NewEvaluator(&prog, &l, false)
 		result := cli.Test(&ev, false)
 		if !result {
 			t.Error(fileName)

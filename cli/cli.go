@@ -15,6 +15,7 @@ func Run() (exitCode int) {
 	dbgAst := flag.Bool("debug-ast", false, "debug ast parsing")
 	testMode := flag.Bool("t", false, "run tests")
 	benchMode := flag.Bool("b", false, "benchmark")
+	profile := flag.Bool("p", false, "profile")
 	flag.Parse()
 
 	filePath := flag.Arg(0)
@@ -57,12 +58,18 @@ func Run() (exitCode int) {
 		return 0
 	}
 
-	ev := lang.NewEvaluator(&prog, &l)
+	ev := lang.NewEvaluator(&prog, &l, *profile)
 
 	if *testMode {
-		Test(&ev, *benchMode)
+		if !Test(&ev, *benchMode) {
+			exitCode = 1
+		}
 	} else {
 		run(&ev, *benchMode)
+	}
+
+	if *profile {
+		ev.PrintProfile()
 	}
 
 	return exitCode

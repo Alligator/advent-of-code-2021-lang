@@ -3,6 +3,7 @@ package lang
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // control flow errors
@@ -16,7 +17,7 @@ func (c continueError) Error() string { return "" }
 
 type Env struct {
 	parent *Env
-	vars   map[string]Value
+	vars   map[string]*Value
 }
 
 type stackFrame struct {
@@ -28,40 +29,66 @@ type stackFrame struct {
 type Evaluator struct {
 	sections map[string]*StmtSection
 	env      *Env
+	prog     *Program
 	section  *StmtSection
 	lex      *Lexer
 	stackTop *stackFrame
+
+	profileMode   bool
+	profileEvents []*profileEvent
 }
 
-func NewEvaluator(prog *Program, lex *Lexer) Evaluator {
-	env := Env{vars: make(map[string]Value)}
+type profileEvent struct {
+	node  Node
+	start time.Time
+	end   time.Time
+}
+
+func NewEvaluator(prog *Program, lex *Lexer, profile bool) Evaluator {
+	env := Env{vars: make(map[string]*Value)}
 	ev := Evaluator{
-		env:      &env,
-		sections: make(map[string]*StmtSection),
-		lex:      lex,
+		env:         &env,
+		sections:    make(map[string]*StmtSection),
+		lex:         lex,
+		profileMode: profile,
 	}
 
-	ev.setEnv("print", Value{Tag: ValNativeFn, NativeFn: nativePrint})
-	ev.setEnv("println", Value{Tag: ValNativeFn, NativeFn: nativePrintLn})
-	ev.setEnv("num", Value{Tag: ValNativeFn, NativeFn: nativeNum})
-	ev.setEnv("read", Value{Tag: ValNativeFn, NativeFn: nativeRead})
-	ev.setEnv("split", Value{Tag: ValNativeFn, NativeFn: nativeSplit})
-	ev.setEnv("len", Value{Tag: ValNativeFn, NativeFn: nativeLen})
-	ev.setEnv("push", Value{Tag: ValNativeFn, NativeFn: nativePush})
-	ev.setEnv("slice", Value{Tag: ValNativeFn, NativeFn: nativeSlice})
-	ev.setEnv("delete", Value{Tag: ValNativeFn, NativeFn: nativeDelete})
-	ev.setEnv("range", Value{Tag: ValNativeFn, NativeFn: nativeRange})
-	ev.setEnv("rangei", Value{Tag: ValNativeFn, NativeFn: nativeRangeI})
-	ev.setEnv("sort", Value{Tag: ValNativeFn, NativeFn: nativeSort})
-	ev.setEnv("upper", Value{Tag: ValNativeFn, NativeFn: nativeUpper})
+	ev.setEnv("print", &Value{Tag: ValNativeFn, NativeFn: nativePrint})
+	ev.setEnv("println", &Value{Tag: ValNativeFn, NativeFn: nativePrintLn})
+	ev.setEnv("num", &Value{Tag: ValNativeFn, NativeFn: nativeNum})
+	ev.setEnv("read", &Value{Tag: ValNativeFn, NativeFn: nativeRead})
+	ev.setEnv("split", &Value{Tag: ValNativeFn, NativeFn: nativeSplit})
+	ev.setEnv("len", &Value{Tag: ValNativeFn, NativeFn: nativeLen})
+	ev.setEnv("push", &Value{Tag: ValNativeFn, NativeFn: nativePush})
+	ev.setEnv("slice", &Value{Tag: ValNativeFn, NativeFn: nativeSlice})
+	ev.setEnv("delete", &Value{Tag: ValNativeFn, NativeFn: nativeDelete})
+	ev.setEnv("range", &Value{Tag: ValNativeFn, NativeFn: nativeRange})
+	ev.setEnv("rangei", &Value{Tag: ValNativeFn, NativeFn: nativeRangeI})
+	ev.setEnv("sort", &Value{Tag: ValNativeFn, NativeFn: nativeSort})
+	ev.setEnv("upper", &Value{Tag: ValNativeFn, NativeFn: nativeUpper})
 
 	ev.evalProgram(prog)
 	return ev
 }
 
+func (ev *Evaluator) profileStart(node Node) *profileEvent {
+	if ev.profileMode {
+		evt := profileEvent{node, time.Now(), time.Unix(0, 0)}
+		ev.profileEvents = append(ev.profileEvents, &evt)
+		return &evt
+	}
+	return nil
+}
+
+func (ev *Evaluator) profileEnd(evt *profileEvent) {
+	if ev.profileMode {
+		evt.end = time.Now()
+	}
+}
+
 func (ev *Evaluator) pushEnv() {
 	env := ev.env
-	newEnv := Env{vars: make(map[string]Value)}
+	newEnv := Env{vars: make(map[string]*Value)}
 	newEnv.parent = env
 	ev.env = &newEnv
 }
@@ -85,11 +112,11 @@ func (ev *Evaluator) popFrame() {
 	ev.stackTop = ev.stackTop.parent
 }
 
-func (ev *Evaluator) setEnv(name string, val Value) {
+func (ev *Evaluator) setEnv(name string, val *Value) {
 	ev.env.vars[name] = val
 }
 
-func (ev *Evaluator) updateEnv(name string, val Value) {
+func (ev *Evaluator) updateEnv(name string, val *Value) {
 	env := ev.env
 	for env != nil {
 		_, present := env.vars[name]
@@ -106,7 +133,7 @@ func (ev *Evaluator) find(name string) (*Value, bool) {
 	for env != nil {
 		val, present := env.vars[name]
 		if present {
-			return &val, true
+			return val, true
 		}
 		env = env.parent
 	}
@@ -135,11 +162,15 @@ func (ev *Evaluator) ReadInput(input string) {
 		lines = append(lines, Value{Tag: ValStr, Str: &l})
 	}
 
-	ev.setEnv("input", Value{Tag: ValStr, Str: &input})
-	ev.setEnv("lines", Value{Tag: ValArray, Array: &lines})
+	ev.setEnv("input", &Value{Tag: ValStr, Str: &input})
+	ev.setEnv("lines", &Value{Tag: ValArray, Array: &lines})
 }
 
 func (ev *Evaluator) evalProgram(prog *Program) error {
+	ev.prog = prog
+	evt := ev.profileStart(prog)
+	defer func() { ev.profileEnd(evt) }()
+
 	ev.pushFrame(prog)
 
 	// read all the sections
@@ -164,12 +195,16 @@ func (ev *Evaluator) EvalSection(name string) (Value, error) {
 	}
 
 	section, preset := ev.sections[name]
+	evt := ev.profileStart(section)
 	if !preset {
 		panic(fmt.Errorf("couldn't find section %s", name))
 	}
 
 	ev.section = section
-	defer func() { ev.section = nil }()
+	defer func() {
+		ev.profileEnd(evt)
+		ev.section = nil
+	}()
 
 	v, err := ev.evalStmt(&section.Body)
 	if r, ok := err.(returnValue); ok {
@@ -239,6 +274,8 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 					panic(r)
 				}
 			}()
+			evt := ev.profileStart(node)
+			defer func() { ev.profileEnd(evt) }()
 			return fnVal.NativeFn(args)
 		case ValFn:
 			v, err := ev.fn(node, fnVal, args)
@@ -252,7 +289,7 @@ func (ev *Evaluator) evalExpr(expr *Expr) Value {
 	case *ExprFunc:
 		closure := Closure{node, ev.env}
 		fnVal := Value{Tag: ValFn, Fn: &closure}
-		ev.setEnv(node.Identifier, fnVal)
+		ev.setEnv(node.Identifier, &fnVal)
 		return fnVal
 	case *ExprBinary:
 		return ev.evalBinaryExpr(node)
@@ -280,6 +317,7 @@ func (ev *Evaluator) fn(node Node, fnVal Value, args []Value) (Value, error) {
 	closure := fnVal.Fn
 	fn := closure.fn
 	prevEnv := ev.env
+	evt := ev.profileStart(fn)
 
 	if len(fn.Args) != len(args) {
 		panic(ev.fmtError(fn, "arity mismatch: %s expects %d arguments", fn.Identifier, len(fn.Args)))
@@ -292,10 +330,11 @@ func (ev *Evaluator) fn(node Node, fnVal Value, args []Value) (Value, error) {
 		ev.popFrame()
 		ev.popEnv()
 		ev.env = prevEnv
+		ev.profileEnd(evt)
 	}()
 
 	for index, ident := range fn.Args {
-		ev.setEnv(ident, args[index])
+		ev.setEnv(ident, &args[index])
 	}
 
 	b := fn.Body.(*StmtBlock)
@@ -472,7 +511,7 @@ func (ev *Evaluator) evalAssignment(expr *ExprBinary) Value {
 	case *ExprIdentifier:
 		ident := node.Identifier
 		val := ev.evalExpr(&expr.Rhs)
-		ev.updateEnv(ident, val)
+		ev.updateEnv(ident, &val)
 		return val
 
 	case *ExprBinary:
@@ -498,7 +537,7 @@ func (ev *Evaluator) evalStmt(stmt *Stmt) (Value, error) {
 	case *StmtVar:
 		ident := node.Identifier
 		val := ev.evalExpr(&node.Value)
-		ev.setEnv(ident, val)
+		ev.setEnv(ident, &val)
 	case *StmtFor:
 		err := ev.forLoop(node)
 		if err != nil {
@@ -588,7 +627,7 @@ MatchLoop:
 			ev.pushEnv()
 			defer func() { ev.popEnv() }()
 			for k, v := range vars {
-				ev.env.vars[k] = v
+				ev.env.vars[k] = &v
 			}
 
 			b := c.Body.(*StmtBlock)
@@ -668,10 +707,10 @@ func (ev *Evaluator) forLoop(node *StmtFor) error {
 
 func (ev *Evaluator) runForLoopBody(node *StmtFor, val Value, index Value) (bool, error) {
 	if node.Identifier != "" {
-		ev.setEnv(node.Identifier, val)
+		ev.setEnv(node.Identifier, &val)
 	}
 	if node.IndexIdentifier != "" {
-		ev.setEnv(node.IndexIdentifier, index)
+		ev.setEnv(node.IndexIdentifier, &index)
 	}
 
 	b := node.body.(*StmtBlock)
