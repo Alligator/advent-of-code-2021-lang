@@ -614,15 +614,6 @@ func (ev *Evaluator) match(match *StmtMatch) error {
 MatchLoop:
 	for _, c := range match.Cases {
 		switch pattern := c.Cond.(type) {
-		case *ExprString:
-			if candidate.Tag != ValStr {
-				continue
-			}
-			if *candidate.Str == pattern.Str {
-				b := c.Body.(*StmtBlock)
-				ev.evalBlock(b)
-				return nil
-			}
 		case *ExprArray:
 			if candidate.Tag != ValArray {
 				continue
@@ -665,8 +656,36 @@ MatchLoop:
 				}
 			}
 			return nil
+		case *ExprIdentifier:
+			ev.pushEnv()
+			defer func() { ev.popEnv() }()
+			ev.setEnv(pattern.Identifier, &candidate)
+			b := c.Body.(*StmtBlock)
+			for _, stmt := range b.Body {
+				_, err := ev.evalStmt(&stmt)
+				if err != nil {
+					return err
+				}
+			}
 		default:
-			panic(ev.fmtError(c.Cond, "unsupported match type %v", c.Cond.Token().Tag.String()))
+			val := ev.evalExpr(&pattern)
+			if candidate.Tag != val.Tag {
+				continue
+			}
+
+			eq, err := candidate.Compare(val)
+			if err != nil {
+				panic(ev.fmtError(pattern, err.Error()))
+			}
+
+			if eq {
+				b := c.Body.(*StmtBlock)
+				err := ev.evalBlock(b)
+				if err != nil {
+					return err
+				}
+				return nil
+			}
 		}
 	}
 	return nil

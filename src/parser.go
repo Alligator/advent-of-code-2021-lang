@@ -327,8 +327,8 @@ func hashMap(p *Parser) Expr {
 			// shorthand
 			key := p.lex.GetString(ident)
 			item := ExprMapItem{
-					Key: key,
-					Value: &ExprIdentifier{key, ident},
+				Key:   key,
+				Value: &ExprIdentifier{key, ident},
 			}
 			items = append(items, item)
 		}
