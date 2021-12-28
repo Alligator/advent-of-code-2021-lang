@@ -14,39 +14,43 @@ const (
 	Identifier
 	Str
 	Num
-	Colon        // :
-	LCurly       // {
-	RCurly       // }
-	LParen       // (
-	RParen       // )
-	LSquare      // [
-	RSquare      // ]
-	Equal        // =
-	EqualEqual   // ==
-	BangEqual    // !=
-	Greater      // >
-	GreaterEqual // >=
-	Less         // <
-	LessEqual    // <=
-	Plus         // +
-	Star         // *
-	Comma        // ,
-	Minus        // -
-	Slash        // /
-	Percent      // %
-	AmpAmp       // &&
-	PipePipe     // ||
-	Var          // var
-	For          // for
-	In           // in
-	If           // if
-	Return       // return
-	Continue     // continue
-	Match        // match
-	Else         // else
-	Break        // break
-	Fn           // fn
-	Nil          // nil
+	Colon          // :
+	LCurly         // {
+	RCurly         // }
+	LParen         // (
+	RParen         // )
+	LSquare        // [
+	RSquare        // ]
+	Equal          // =
+	EqualEqual     // ==
+	BangEqual      // !=
+	Greater        // >
+	GreaterEqual   // >=
+	Less           // <
+	LessEqual      // <=
+	Plus           // +
+	Star           // *
+	Comma          // ,
+	Minus          // -
+	Slash          // /
+	Percent        // %
+	AmpAmp         // &&
+	PipePipe       // ||
+	Amp            // &
+	Pipe           // |
+	GreaterGreater // >>
+	LessLess       // <<
+	Var            // var
+	For            // for
+	In             // in
+	If             // if
+	Return         // return
+	Continue       // continue
+	Match          // match
+	Else           // else
+	Break          // break
+	Fn             // fn
+	Nil            // nil
 )
 
 type Token struct {
@@ -243,11 +247,19 @@ func (lex *Lexer) NextToken() (retToken Token, err error) {
 			lex.advance()
 			return simpleToken(lex, LessEqual), nil
 		}
+		if lex.peek() == '<' {
+			lex.advance()
+			return simpleToken(lex, LessLess), nil
+		}
 		return simpleToken(lex, Less), nil
 	case '>':
 		if lex.peek() == '=' {
 			lex.advance()
 			return simpleToken(lex, GreaterEqual), nil
+		}
+		if lex.peek() == '>' {
+			lex.advance()
+			return simpleToken(lex, GreaterGreater), nil
 		}
 		return simpleToken(lex, Greater), nil
 	case '=':
@@ -266,11 +278,13 @@ func (lex *Lexer) NextToken() (retToken Token, err error) {
 			lex.advance()
 			return simpleToken(lex, AmpAmp), nil
 		}
+		return simpleToken(lex, Amp), nil
 	case '|':
 		if lex.peek() == '|' {
 			lex.advance()
 			return simpleToken(lex, PipePipe), nil
 		}
+		return simpleToken(lex, Pipe), nil
 	}
 	return retToken, lex.fmtError("unexpected character %q (%x)", r, r)
 }

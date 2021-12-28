@@ -408,6 +408,32 @@ func (ev *Evaluator) evalBinaryExpr(expr *ExprBinary) Value {
 		}
 
 		return Value{Tag: ValNum, Num: &result}
+	case LessLess, GreaterGreater, Amp, Pipe:
+		// coerce nils to 0
+		if lhs.Tag == ValNil {
+			lhs = ZeroValue
+		}
+		if rhs.Tag == ValNil {
+			rhs = ZeroValue
+		}
+
+		if lhs.Tag != ValNum || rhs.Tag != ValNum {
+			panic(ev.fmtError(expr, "operator only supported for numbers"))
+		}
+
+		var result int
+		switch expr.Op.Tag {
+		case LessLess:
+			result = *lhs.Num << *rhs.Num
+		case GreaterGreater:
+			result = *lhs.Num >> *rhs.Num
+		case Amp:
+			result = *lhs.Num & *rhs.Num
+		case Pipe:
+			result = *lhs.Num | *rhs.Num
+		}
+
+		return Value{Tag: ValNum, Num: &result}
 	case EqualEqual, BangEqual:
 		result, err := lhs.Compare(rhs)
 		if err != nil {

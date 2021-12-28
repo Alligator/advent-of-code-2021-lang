@@ -26,6 +26,7 @@ const (
 	PrecAssign
 	PrecLogical
 	PrecCompare
+	PrecShift
 	PrecSum
 	PrecProduct
 	PrecCall
@@ -46,28 +47,32 @@ func NewParser(lex *Lexer) Parser {
 
 func (p *Parser) makeRules() {
 	rules := map[TokenTag]rule{
-		Str:          {PrecNone, str, nil},
-		Num:          {PrecNone, number, nil},
-		Nil:          {PrecNone, nilExpr, nil},
-		Identifier:   {PrecNone, identifier, nil},
-		LSquare:      {PrecCall, array, subscript},
-		LParen:       {PrecCall, group, call},
-		LCurly:       {PrecNone, hashMap, nil},
-		Fn:           {PrecNone, fn, nil},
-		Equal:        {PrecAssign, nil, binary},
-		AmpAmp:       {PrecLogical, nil, binary},
-		PipePipe:     {PrecLogical, nil, binary},
-		EqualEqual:   {PrecCompare, nil, binary},
-		Greater:      {PrecCompare, nil, binary},
-		GreaterEqual: {PrecCompare, nil, binary},
-		Less:         {PrecCompare, nil, binary},
-		LessEqual:    {PrecCompare, nil, binary},
-		BangEqual:    {PrecCompare, nil, binary},
-		Plus:         {PrecSum, nil, binary},
-		Minus:        {PrecSum, unary, binary},
-		Star:         {PrecProduct, nil, binary},
-		Slash:        {PrecProduct, nil, binary},
-		Percent:      {PrecProduct, nil, binary},
+		Str:            {PrecNone, str, nil},
+		Num:            {PrecNone, number, nil},
+		Nil:            {PrecNone, nilExpr, nil},
+		Identifier:     {PrecNone, identifier, nil},
+		LSquare:        {PrecCall, array, subscript},
+		LParen:         {PrecCall, group, call},
+		LCurly:         {PrecNone, hashMap, nil},
+		Fn:             {PrecNone, fn, nil},
+		Equal:          {PrecAssign, nil, binary},
+		AmpAmp:         {PrecLogical, nil, binary},
+		PipePipe:       {PrecLogical, nil, binary},
+		EqualEqual:     {PrecCompare, nil, binary},
+		Greater:        {PrecCompare, nil, binary},
+		GreaterEqual:   {PrecCompare, nil, binary},
+		Less:           {PrecCompare, nil, binary},
+		LessEqual:      {PrecCompare, nil, binary},
+		BangEqual:      {PrecCompare, nil, binary},
+		Plus:           {PrecSum, nil, binary},
+		Minus:          {PrecSum, unary, binary},
+		Star:           {PrecProduct, nil, binary},
+		Slash:          {PrecProduct, nil, binary},
+		Percent:        {PrecProduct, nil, binary},
+		LessLess:       {PrecShift, nil, binary},
+		GreaterGreater: {PrecShift, nil, binary},
+		Amp:            {PrecCompare, nil, binary},
+		Pipe:           {PrecCompare, nil, binary},
 	}
 
 	p.rules = rules
